@@ -1,7 +1,7 @@
 # tests/test_parser.py - Test dependency file parsing
 import tempfile
 import pytest
-from src.utils.parser import parse_dependency_file, parse_requirements_txt, parse_environment_yml
+from core.parser import parse_dependency_file, parse_requirements_txt, parse_environment_yml
 from pathlib import Path
 
 class TestDependencyParser:

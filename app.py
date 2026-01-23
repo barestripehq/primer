@@ -8,9 +8,9 @@ from pathlib import Path
 from smolagents import CodeAgent, InferenceClientModel
 
 # imports utils
-from src.utils.parser import parse_dependency_file
+from core.parser import parse_dependency_file
 from src.utils.spinner import run_with_spinner
-from src.utils.summarizer import Summarizer
+from core.summarizer import Summarizer
 
 from src.tools.final_answer import FinalAnswerTool
 from src.tools.package_scan import PackageScanTool

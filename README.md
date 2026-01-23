@@ -226,6 +226,33 @@ pip install pytest-cov
 pytest --cov=src tests/
 ```
 
+## 🗺️ Roadmap
+
+### GitHub App Integration
+Transform MotionStream from a CLI tool into an automated CI/CD security gate:
+
+- [ ] **FastAPI webhook server** - Listen for GitHub push/PR events
+- [ ] **GitHub Check Runs** - Display scan results directly in PR UI
+- [ ] **Differential scanning** - Only scan dependencies changed in a PR
+- [ ] **Auto-fix PRs** - Automatically open PRs to update vulnerable packages
+
+### Multi-Language Support
+Extend scanning beyond Python using OSV's multi-ecosystem API:
+
+| Language | Dependency File | Status |
+|----------|-----------------|--------|
+| Python | `requirements.txt`, `environment.yml` | ✅ Supported |
+| JavaScript | `package.json`, `package-lock.json` | 🔜 Planned |
+| Go | `go.mod` | 🔜 Planned |
+| Rust | `Cargo.toml` | 🔜 Planned |
+| Ruby | `Gemfile` | 🔜 Planned |
+| Java | `pom.xml`, `build.gradle` | 🔜 Planned |
+
+### AI Enhancements
+- [ ] Language-specific security personas (e.g., prototype pollution for npm, memory safety for Rust)
+- [ ] Reachability analysis for transitive dependencies
+- [ ] Custom severity scoring based on project context
+
 ## 🤝 Contributing
 
 This is a proof-of-concept project. For improvements:

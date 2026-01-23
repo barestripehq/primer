@@ -178,3 +178,5 @@ cython_debug/
 
 # dev dir
 bin
+.vscode/
+todo.md

@@ -1,7 +1,7 @@
 # tests/test_summarizer.py - Test output formatting
 import pytest
 from unittest.mock import patch
-from src.utils.summarizer import Summary
+from core.summarizer import Summary
 
 class TestSummaryFormatter:
     """Test the output formatting functionality."""

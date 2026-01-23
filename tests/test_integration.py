@@ -24,9 +24,9 @@ class TestIntegration:
         mock_post.return_value = mock_response
         
         # Test the parsing -> scanning -> formatting pipeline
-        from src.utils.parser import parse_dependency_file
+        from core.parser import parse_dependency_file
         from src.tools.package_scan import PackageScanTool
-        from src.utils.summarizer import Summary
+        from core.summarizer import Summary
         
         # Parse dependencies
         dependencies = parse_dependency_file(sample_requirements_txt)
