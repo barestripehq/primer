@@ -207,7 +207,7 @@ pub async fn run(pm: PackageManager, args: Vec<String>) -> Result<()> {
                 continue;
             }
 
-            match osv::query(&pkg.name, pm.ecosystem(), pkg.version.as_deref()).await {
+            match osv::query(&pkg.name, pm.ecosystem(), pkg.version.as_deref(), false).await {
                 Ok(vulns) if !vulns.is_empty() => {
                     match crate::prompt::evaluate(&pkg.name, pm.ecosystem(), &vulns, force) {
                         crate::prompt::Decision::Abort => std::process::exit(1),

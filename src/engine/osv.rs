@@ -44,7 +44,7 @@ struct OsvDbSpecific {
 }
 
 /// A normalised vulnerability returned to callers.
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Vulnerability {
     pub id: String,
     pub summary: Option<String>,
@@ -66,10 +66,58 @@ impl Vulnerability {
 }
 
 /// Query OSV for vulnerabilities affecting `package` in `ecosystem`.
-/// Returns an empty vec when none are found.
-/// Returns `Err` only on network/parse failure (caller should fail-open).
-pub async fn query(package: &str, ecosystem: &str, version: Option<&str>) -> Result<Vec<Vulnerability>> {
-    query_with_base(OSV_API, package, ecosystem, version).await
+/// Checks the local cache first; writes results back on a network hit.
+/// Falls back to stale cache if the network is unreachable.
+/// Returns `Err` only when both network and cache are unavailable.
+pub async fn query(
+    package: &str,
+    ecosystem: &str,
+    version: Option<&str>,
+    verbose: bool,
+) -> Result<Vec<Vulnerability>> {
+    query_inner(OSV_API, &crate::cache::cache_dir(), package, ecosystem, version, verbose).await
+}
+
+/// Testable variant — accepts injectable base URL and cache directory.
+pub(crate) async fn query_inner(
+    base_url: &str,
+    cache_dir: &std::path::Path,
+    package: &str,
+    ecosystem: &str,
+    version: Option<&str>,
+    verbose: bool,
+) -> Result<Vec<Vulnerability>> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs();
+
+    if let Some(vulns) = crate::cache::get_from_dir(cache_dir, package, ecosystem, version, now) {
+        if verbose {
+            eprintln!("motionstream: cache hit — {} ({})", package, ecosystem);
+        }
+        return Ok(vulns);
+    }
+
+    if verbose {
+        eprintln!("motionstream: fetching {} ({}) from OSV", package, ecosystem);
+    }
+
+    match query_with_base(base_url, package, ecosystem, version).await {
+        Ok(vulns) => {
+            if let Err(e) = crate::cache::put_to_dir(cache_dir, package, ecosystem, version, &vulns, now) {
+                eprintln!("motionstream: cache write failed: {}", e);
+            }
+            Ok(vulns)
+        }
+        Err(e) => {
+            if let Some(vulns) = crate::cache::get_stale_from_dir(cache_dir, package, ecosystem, version) {
+                eprintln!("⚠  motionstream: OSV unreachable ({}), using stale cache for {}", e, package);
+                return Ok(vulns);
+            }
+            Err(e)
+        }
+    }
 }
 
 /// Same as `query` but accepts a custom base URL — used in tests.
@@ -244,12 +292,79 @@ mod tests {
         assert!(result.is_err());
     }
 
+    // --- Cache integration tests ---
+
+    #[tokio::test]
+    async fn query_inner_returns_cached_result_without_hitting_network() {
+        let dir = tempfile::tempdir().unwrap();
+        let cached = vec![Vulnerability {
+            id: "GHSA-cached".into(),
+            summary: None,
+            cvss_vector: None,
+            severity: Some("HIGH".into()),
+        }];
+        crate::cache::put_to_dir(dir.path(), "requests", "PyPI", None, &cached, 1000).unwrap();
+
+        // Dead URL — would error if network were reached.
+        let result = query_inner("http://127.0.0.1:1", dir.path(), "requests", "PyPI", None, false)
+            .await
+            .unwrap();
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "GHSA-cached");
+    }
+
+    #[tokio::test]
+    async fn query_inner_uses_stale_cache_on_network_failure() {
+        let dir = tempfile::tempdir().unwrap();
+        let stale = vec![Vulnerability {
+            id: "GHSA-stale".into(),
+            summary: None,
+            cvss_vector: None,
+            severity: Some("CRITICAL".into()),
+        }];
+        // Write with timestamp=0 so entry is expired (age >> TTL).
+        crate::cache::put_to_dir(dir.path(), "requests", "PyPI", None, &stale, 0).unwrap();
+
+        // Dead URL triggers network error → should fall back to stale entry.
+        let result = query_inner("http://127.0.0.1:1", dir.path(), "requests", "PyPI", None, false)
+            .await
+            .unwrap();
+
+        assert_eq!(result[0].id, "GHSA-stale");
+    }
+
+    #[tokio::test]
+    async fn query_inner_writes_network_result_to_cache() {
+        let mut server = Server::new_async().await;
+        let body = r#"{"vulns":[{"id":"GHSA-net-0001","summary":null,"severity":[],"database_specific":{"severity":"LOW"}}]}"#;
+        let mock = server.mock("POST", "/query")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(body)
+            .create_async()
+            .await;
+
+        let dir = tempfile::tempdir().unwrap();
+        let result = query_inner(&server.url(), dir.path(), "newpkg", "PyPI", None, false)
+            .await
+            .unwrap();
+        mock.assert_async().await;
+
+        assert_eq!(result[0].id, "GHSA-net-0001");
+
+        // Verify the entry was written to cache.
+        let cached = crate::cache::get_stale_from_dir(dir.path(), "newpkg", "PyPI", None);
+        assert!(cached.is_some());
+        assert_eq!(cached.unwrap()[0].id, "GHSA-net-0001");
+    }
+
     // --- Live API tests (opt-in, not run in CI) ---
 
     #[tokio::test]
     #[ignore = "hits live OSV API — run with: cargo test -- --ignored"]
     async fn live_pillow_9_0_0_has_critical_vulns() {
-        let vulns = query("pillow", "PyPI", Some("9.0.0")).await.unwrap();
+        let vulns = query("pillow", "PyPI", Some("9.0.0"), false).await.unwrap();
         assert!(!vulns.is_empty(), "expected vulnerabilities for pillow 9.0.0");
         let has_critical = vulns.iter().any(|v| v.severity_label() == "CRITICAL");
         assert!(has_critical, "expected at least one CRITICAL finding");
@@ -258,7 +373,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "hits live OSV API — run with: cargo test -- --ignored"]
     async fn live_nonexistent_package_returns_empty() {
-        let vulns = query("zzz-nonexistent-pkg-motionstream", "PyPI", None).await.unwrap();
+        let vulns = query("zzz-nonexistent-pkg-motionstream", "PyPI", None, false).await.unwrap();
         assert!(vulns.is_empty());
     }
 }

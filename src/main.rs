@@ -1,4 +1,5 @@
 mod allowlist;
+mod cache;
 mod cli;
 mod engine;
 mod prompt;
@@ -31,6 +32,14 @@ enum Commands {
         /// Proceed regardless of findings
         #[arg(long)]
         force: bool,
+        /// Print cache hit/miss and fetch source
+        #[arg(long)]
+        verbose: bool,
+    },
+    /// Manage the local vulnerability cache
+    Cache {
+        #[command(subcommand)]
+        command: CacheCommands,
     },
     /// Add a package to the project allow-list (.motionstream-ignore)
     Allow {
@@ -50,6 +59,12 @@ enum Commands {
     },
     /// Check PATH order, shim health, cache, and model state
     Doctor,
+}
+
+#[derive(Subcommand)]
+enum CacheCommands {
+    /// Remove all cached vulnerability results
+    Clear,
 }
 
 #[derive(Clone, ValueEnum)]
@@ -87,11 +102,11 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Scan { package, ecosystem, version, force } => {
+        Commands::Scan { package, ecosystem, version, force, verbose } => {
             let eco = ecosystem.as_osv_str();
             println!("Scanning {} ({}) ...", package, eco);
 
-            match osv::query(&package, eco, version.as_deref()).await {
+            match osv::query(&package, eco, version.as_deref(), verbose).await {
                 Ok(vulns) if vulns.is_empty() => {
                     println!("✓ No vulnerabilities found.");
                 }
@@ -110,6 +125,14 @@ async fn main() -> Result<()> {
         Commands::Allow { package, ecosystem } => {
             let eco = ecosystem.as_ref().map(|e| e.as_osv_str());
             allowlist::add(&package, eco)?;
+        }
+
+        Commands::Cache { command: CacheCommands::Clear } => {
+            match cache::clear() {
+                Ok(0) => println!("Cache is already empty."),
+                Ok(n) => println!("Cleared {} cached entr{}.", n, if n == 1 { "y" } else { "ies" }),
+                Err(e) => eprintln!("Failed to clear cache: {}", e),
+            }
         }
 
         Commands::Init => cli::init::run()?,
