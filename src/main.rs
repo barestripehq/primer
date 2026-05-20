@@ -1,5 +1,8 @@
+mod allowlist;
 mod cli;
 mod engine;
+mod prompt;
+mod report;
 mod shim;
 
 use anyhow::Result;
@@ -25,6 +28,17 @@ enum Commands {
         /// Specific version to check (defaults to latest)
         #[arg(long)]
         version: Option<String>,
+        /// Proceed regardless of findings
+        #[arg(long)]
+        force: bool,
+    },
+    /// Add a package to the project allow-list (.motionstream-ignore)
+    Allow {
+        /// Package name to allow
+        package: String,
+        /// Ecosystem to scope the allow (optional)
+        #[arg(long, value_enum)]
+        ecosystem: Option<Ecosystem>,
     },
     /// Generate shims and update PATH
     Init,
@@ -73,7 +87,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Scan { package, ecosystem, version } => {
+        Commands::Scan { package, ecosystem, version, force } => {
             let eco = ecosystem.as_osv_str();
             println!("Scanning {} ({}) ...", package, eco);
 
@@ -82,22 +96,20 @@ async fn main() -> Result<()> {
                     println!("✓ No vulnerabilities found.");
                 }
                 Ok(vulns) => {
-                    println!("Found {} vulnerability/vulnerabilities:\n", vulns.len());
-                    for v in &vulns {
-                        println!("  [{}] {}", v.severity_label(), v.id);
-                        if let Some(summary) = &v.summary {
-                            println!("      {}", summary);
-                        }
-                        if let Some(vector) = &v.cvss_vector {
-                            println!("      CVSS: {}", vector);
-                        }
-                        println!();
+                    match prompt::evaluate(&package, eco, &vulns, force) {
+                        prompt::Decision::Abort => std::process::exit(1),
+                        prompt::Decision::Proceed => {}
                     }
                 }
                 Err(e) => {
-                    eprintln!("⚠ Scan skipped: {} (proceeding with install)", e);
+                    eprintln!("⚠ Scan skipped: {} (proceeding)", e);
                 }
             }
+        }
+
+        Commands::Allow { package, ecosystem } => {
+            let eco = ecosystem.as_ref().map(|e| e.as_osv_str());
+            allowlist::add(&package, eco)?;
         }
 
         Commands::Init => cli::init::run()?,

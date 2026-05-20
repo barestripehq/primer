@@ -199,17 +199,20 @@ pub async fn run(pm: PackageManager, args: Vec<String>) -> Result<()> {
         .ok_or_else(|| anyhow::anyhow!("Could not find real '{}' binary in PATH", pm.name()))?;
 
     if let Some(packages) = extract_packages(&pm, &args) {
+        let force = crate::prompt::force_flag();
+
         for pkg in &packages {
+            // Skip allow-listed packages silently.
+            if crate::allowlist::is_allowed(&pkg.name, pm.ecosystem()) {
+                continue;
+            }
+
             match osv::query(&pkg.name, pm.ecosystem(), pkg.version.as_deref()).await {
                 Ok(vulns) if !vulns.is_empty() => {
-                    eprintln!("\n⚠  motionstream: {} vulnerability/vulnerabilities found for '{}'", vulns.len(), pkg.name);
-                    for v in &vulns {
-                        eprintln!("   [{}] {}", v.severity_label(), v.id);
-                        if let Some(summary) = &v.summary {
-                            eprintln!("       {}", summary);
-                        }
+                    match crate::prompt::evaluate(&pkg.name, pm.ecosystem(), &vulns, force) {
+                        crate::prompt::Decision::Abort => std::process::exit(1),
+                        crate::prompt::Decision::Proceed => {}
                     }
-                    eprintln!();
                 }
                 Ok(_) => {}
                 Err(e) => eprintln!("⚠  motionstream: scan skipped ({}) — proceeding", e),
