@@ -1,3 +1,0 @@
-requests==2.32.4
-pandas==
-browser-use==0.1.44

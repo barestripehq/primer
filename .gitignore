@@ -177,6 +177,12 @@ cython_debug/
 .pypirc
 
 # dev dir
-bin
+.bin
 .vscode/
 todo.md
+
+# Added by cargo
+
+/target
+roadmap-v*.md
+spec-v*.md
