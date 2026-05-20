@@ -1,4 +1,6 @@
+mod cli;
 mod engine;
+mod shim;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
@@ -24,6 +26,16 @@ enum Commands {
         #[arg(long)]
         version: Option<String>,
     },
+    /// Generate shims and update PATH
+    Init,
+    /// Remove shims and PATH entries
+    Uninit {
+        /// Also delete cache and model files
+        #[arg(long)]
+        purge: bool,
+    },
+    /// Check PATH order, shim health, cache, and model state
+    Doctor,
 }
 
 #[derive(Clone, ValueEnum)]
@@ -51,6 +63,13 @@ impl Ecosystem {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Check if we are being invoked as a PM shim (e.g. argv[0] == "pip").
+    let argv0 = std::env::args().next().unwrap_or_default();
+    if let Some(pm) = shim::PackageManager::from_argv0(&argv0) {
+        let args: Vec<String> = std::env::args().skip(1).collect();
+        return shim::run(pm, args).await;
+    }
+
     let cli = Cli::parse();
 
     match cli.command {
@@ -80,6 +99,10 @@ async fn main() -> Result<()> {
                 }
             }
         }
+
+        Commands::Init => cli::init::run()?,
+        Commands::Uninit { purge } => cli::uninit::run(purge)?,
+        Commands::Doctor => cli::doctor::run()?,
     }
 
     Ok(())
