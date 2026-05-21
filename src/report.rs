@@ -34,7 +34,9 @@ pub(crate) fn write_to_dir(
     ecosystem: &str,
     vulns: &[Vulnerability],
 ) -> Result<()> {
-    let blocked = vulns.iter().any(|v| matches!(v.severity_label(), "CRITICAL" | "HIGH"));
+    let blocked = vulns
+        .iter()
+        .any(|v| matches!(v.severity_label(), "CRITICAL" | "HIGH"));
 
     let findings = vulns
         .iter()
@@ -46,8 +48,16 @@ pub(crate) fn write_to_dir(
         })
         .collect();
 
-    let report = Report { package, ecosystem, blocked, findings };
-    fs::write(dir.join(REPORT_FILE), serde_json::to_string_pretty(&report)?)?;
+    let report = Report {
+        package,
+        ecosystem,
+        blocked,
+        findings,
+    };
+    fs::write(
+        dir.join(REPORT_FILE),
+        serde_json::to_string_pretty(&report)?,
+    )?;
     Ok(())
 }
 

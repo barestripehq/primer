@@ -23,7 +23,13 @@ fn entry_path(dir: &Path, package: &str, ecosystem: &str, version: Option<&str>)
     let raw = format!("{}_{}_{}", ecosystem, package, v);
     let safe: String = raw
         .chars()
-        .map(|c| if c.is_alphanumeric() || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     dir.join(format!("{}.json", safe))
 }
@@ -87,7 +93,10 @@ pub(crate) fn put_to_dir(
     ts: u64,
 ) -> Result<()> {
     std::fs::create_dir_all(dir)?;
-    let entry = CacheEntry { fetched_at: ts, vulns: vulns.to_vec() };
+    let entry = CacheEntry {
+        fetched_at: ts,
+        vulns: vulns.to_vec(),
+    };
     let path = entry_path(dir, package, ecosystem, version);
     std::fs::write(path, serde_json::to_string_pretty(&entry)?)?;
     Ok(())
@@ -186,7 +195,10 @@ mod tests {
         put_to_dir(dir.path(), "mypkg", "PyPI", Some("2.0"), &vulns, 500).unwrap();
         let got = get_from_dir(dir.path(), "mypkg", "PyPI", Some("2.0"), 501).unwrap();
         assert_eq!(got[0].id, "GHSA-test");
-        assert_eq!(got[0].cvss_vector.as_deref(), Some("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"));
+        assert_eq!(
+            got[0].cvss_vector.as_deref(),
+            Some("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H")
+        );
         assert_eq!(got[0].severity_label(), "CRITICAL");
     }
 }

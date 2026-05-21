@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>primer — Pre-install security interceptor for package managers</title>
+  <meta name="description" content="primer scans packages against the OSV vulnerability database before they hit your system.">
+  <link rel="canonical" href="https://primer-scan.netlify.app">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f9fafb;
+      color: #111827;
+      line-height: 1.6;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+      color: #fff;
+      padding: 72px 24px 56px;
+      text-align: center;
+    }
+
+    .hero h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 16px;
+    }
+
+    .hero h1 span { color: #34d399; }
+
+    .hero p {
+      font-size: 1.2rem;
+      color: #9ca3af;
+      max-width: 560px;
+      margin: 0 auto 40px;
+    }
+
+    .install-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      background: #0f172a;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: 14px 20px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.9rem;
+      color: #e2e8f0;
+      margin-bottom: 32px;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+
+    .install-box .prompt { color: #34d399; -webkit-user-select: none; user-select: none; }
+
+    .copy-btn {
+      background: #374151;
+      border: none;
+      border-radius: 6px;
+      color: #9ca3af;
+      cursor: pointer;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+
+    .copy-btn:hover { background: #4b5563; color: #fff; }
+
+    .hero-links {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: opacity 0.15s;
+    }
+
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #34d399; color: #111827; }
+    .btn-outline { border: 1px solid #4b5563; color: #e2e8f0; }
+
+    /* ── Sections ── */
+    section {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 64px 24px;
+    }
+
+    section + section { padding-top: 0; }
+
+    h2 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: #111827;
+    }
+
+    /* ── Flow diagram ── */
+    .flow {
+      background: #111827;
+      border-radius: 12px;
+      padding: 28px 32px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.88rem;
+      line-height: 2;
+      color: #e2e8f0;
+      overflow-x: auto;
+    }
+
+    .flow .cmd  { color: #34d399; }
+    .flow .step { color: #9ca3af; }
+    .flow .bad  { color: #f87171; }
+    .flow .ok   { color: #34d399; }
+
+    /* ── Cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 24px;
+    }
+
+    .card h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card p { font-size: 0.9rem; color: #6b7280; }
+
+    .badge {
+      display: inline-block;
+      background: #ecfdf5;
+      color: #065f46;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* ── Code blocks ── */
+    .code-block {
+      background: #111827;
+      border-radius: 10px;
+      padding: 20px 24px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+      line-height: 1.8;
+    }
+
+    .code-block .comment { color: #6b7280; }
+    .code-block .cmd     { color: #34d399; }
+
+    /* ── Ecosystem table ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.95rem;
+    }
+
+    th {
+      text-align: left;
+      padding: 12px 16px;
+      background: #f3f4f6;
+      border-bottom: 2px solid #e5e7eb;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    td {
+      padding: 12px 16px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #374151;
+    }
+
+    td code {
+      background: #f3f4f6;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.85rem;
+    }
+
+    tr:last-child td { border-bottom: none; }
+
+    /* ── Footer ── */
+    footer {
+      background: #111827;
+      color: #6b7280;
+      text-align: center;
+      padding: 32px 24px;
+      font-size: 0.875rem;
+    }
+
+    footer a { color: #9ca3af; text-decoration: none; }
+    footer a:hover { color: #fff; }
+    .footer-sub { margin-top: 8px; }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid #e5e7eb;
+      margin: 0 24px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <header class="hero">
+    <h1><span>primer</span></h1>
+    <p>Pre-install security interceptor for package managers. Scans every package against the OSV vulnerability database before it hits your system.</p>
+
+    <div class="install-box">
+      <span class="prompt">$</span>
+      <span id="install-cmd">curl --proto '=https' --tlsv1.2 -fsSL https://github.com/callezenwaka/primer/releases/latest/download/primer-installer.sh | sh</span>
+      <button type="button" class="copy-btn" onclick="copyInstall()">copy</button>
+    </div>
+
+    <div class="hero-links">
+      <a href="https://github.com/callezenwaka/primer" class="btn btn-primary">GitHub</a>
+      <a href="https://github.com/callezenwaka/primer/releases" class="btn btn-outline">Releases</a>
+    </div>
+  </header>
+
+  <!-- How it works -->
+  <section>
+    <h2>How it works</h2>
+    <div class="flow">
+      <div><span class="cmd">$ pip install pillow</span></div>
+      <div><span class="step">  → primer shim intercepts</span></div>
+      <div><span class="step">  → queries OSV vulnerability database</span></div>
+      <div><span class="bad">  → found 3 vulnerabilities (1 CRITICAL, 2 HIGH)</span></div>
+      <div><span class="step">  → [prompt] View full details? (y/N)</span></div>
+      <div><span class="step">  → [prompt] Continue install anyway? (y/N)</span></div>
+      <div><span class="bad">  → exits 1 on "N"</span></div>
+      <br>
+      <div><span class="cmd">$ pip install requests</span></div>
+      <div><span class="ok">  → no vulnerabilities found — passes through silently</span></div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Features -->
+  <section>
+    <h2>Features</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>Intercept <span class="badge">M2</span></h3>
+        <p>Shims sit ahead of your package managers in <code>$PATH</code>. Every install is scanned before execution.</p>
+      </div>
+      <div class="card">
+        <h3>Cache <span class="badge">M4</span></h3>
+        <p>Results cached locally for 24 hours. Repeat installs are instant with stale-on-error fallback.</p>
+      </div>
+      <div class="card">
+        <h3>AI Summary <span class="badge">M5</span></h3>
+        <p>Local SLM generates plain-English CVE summaries. No cloud dependency, no account required.</p>
+      </div>
+      <div class="card">
+        <h3>Git Hook <span class="badge">M6</span></h3>
+        <p>Pre-commit hook blocks commits that add vulnerable packages to manifests.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Quick start -->
+  <section>
+    <h2>Quick start</h2>
+    <div class="code-block">
+      <div class="comment"># 1. Install</div>
+      <div><span class="cmd">curl --proto '=https' --tlsv1.2 -fsSL \</span></div>
+      <div>&nbsp;&nbsp;https://github.com/callezenwaka/primer/releases/latest/download/primer-installer.sh | sh</div>
+      <br>
+      <div class="comment"># 2. Set up shims</div>
+      <div><span class="cmd">primer init</span></div>
+      <br>
+      <div class="comment"># 3. Use your package manager as normal — primer intercepts automatically</div>
+      <div><span class="cmd">pip install requests</span></div>
+      <div><span class="cmd">npm install express</span></div>
+      <br>
+      <div class="comment"># 4. Optional: enable AI summaries</div>
+      <div><span class="cmd">primer update-models</span></div>
+      <div><span class="cmd">primer scan pillow --ecosystem pypi --ai</span></div>
+      <br>
+      <div class="comment"># 5. Optional: block vulnerable commits</div>
+      <div><span class="cmd">primer hook install</span></div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Ecosystems -->
+  <section>
+    <h2>Supported ecosystems</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Ecosystem</th>
+          <th>Intercepted commands</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Python</td>
+          <td><code>pip</code>, <code>uv</code>, <code>poetry</code></td>
+        </tr>
+        <tr>
+          <td>Node.js</td>
+          <td><code>npm</code>, <code>yarn</code>, <code>pnpm</code></td>
+        </tr>
+        <tr>
+          <td>Go</td>
+          <td><code>go get</code>, <code>go mod</code></td>
+        </tr>
+        <tr>
+          <td>Rust</td>
+          <td><code>cargo add</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <p>
+      <a href="https://github.com/callezenwaka/primer">GitHub</a> &nbsp;·&nbsp;
+      <a href="https://github.com/callezenwaka/primer/releases">Releases</a> &nbsp;·&nbsp;
+      MIT License
+    </p>
+    <p class="footer-sub">Built with Rust · Powered by <a href="https://osv.dev">OSV</a></p>
+  </footer>
+
+  <script>
+    function copyInstall() {
+      const text = document.getElementById('install-cmd').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.copy-btn');
+        btn.textContent = 'copied!';
+        setTimeout(() => btn.textContent = 'copy', 2000);
+      });
+    }
+  </script>
+
+</body>
+</html>

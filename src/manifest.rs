@@ -7,12 +7,8 @@ pub struct NewPackage {
 }
 
 /// All manifest filenames that the hook monitors.
-pub const MONITORED_MANIFESTS: &[&str] = &[
-    "requirements.txt",
-    "package.json",
-    "go.mod",
-    "Cargo.toml",
-];
+pub const MONITORED_MANIFESTS: &[&str] =
+    &["requirements.txt", "package.json", "go.mod", "Cargo.toml"];
 
 /// Parse `git diff --cached` output for a single manifest file and return
 /// packages that were newly added (lines beginning with `+` that are not the
@@ -58,7 +54,9 @@ fn split_requirement(s: &str) -> (&str, Option<&str>) {
     let mut split_at = s.len();
     let mut op_len = 0;
     for op in ops {
-        if let Some(pos) = s.find(op) && pos < split_at {
+        if let Some(pos) = s.find(op)
+            && pos < split_at
+        {
             split_at = pos;
             op_len = op.len();
         }
@@ -106,7 +104,9 @@ fn parse_json_dep_line(s: &str) -> Option<(String, String)> {
     let rest = rest.strip_prefix('"')?;
     let (raw_ver, _) = rest.split_once('"')?;
     // Strip semver range prefixes (^, ~, >=, etc.)
-    let version = raw_ver.trim_start_matches(|c: char| !c.is_ascii_digit()).to_string();
+    let version = raw_ver
+        .trim_start_matches(|c: char| !c.is_ascii_digit())
+        .to_string();
     Some((name.to_string(), version))
 }
 
@@ -121,7 +121,10 @@ fn parse_go_mod(diff: &str) -> Vec<NewPackage> {
             let line = l[1..].trim();
             // Lines inside a require block: "module/path v1.2.3"
             // or inline: "require module/path v1.2.3"
-            let line = line.strip_prefix("require").map(|s| s.trim()).unwrap_or(line);
+            let line = line
+                .strip_prefix("require")
+                .map(|s| s.trim())
+                .unwrap_or(line);
             // Skip blank, comments, go directive, module directive, opening parens
             if line.is_empty()
                 || line.starts_with("//")

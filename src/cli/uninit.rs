@@ -53,7 +53,10 @@ fn remove_path_lines() -> Result<()> {
     let home = PathBuf::from(&home);
 
     let candidates = [
-        ".zshenv", ".zshrc", ".bashrc", ".bash_profile",
+        ".zshenv",
+        ".zshrc",
+        ".bashrc",
+        ".bash_profile",
         ".config/fish/config.fish",
     ];
 
@@ -63,9 +66,9 @@ fn remove_path_lines() -> Result<()> {
             continue;
         }
         match strip_marker_block(&path) {
-            Ok(true)  => println!("  ✓ Cleaned {}", path.display()),
+            Ok(true) => println!("  ✓ Cleaned {}", path.display()),
             Ok(false) => {}
-            Err(e)    => println!("  ✗ Could not clean {}: {}", path.display(), e),
+            Err(e) => println!("  ✗ Could not clean {}: {}", path.display(), e),
         }
     }
 
@@ -152,6 +155,9 @@ mod tests {
 
         let after = fs::read_to_string(&path).unwrap();
         assert!(!after.contains(MARKER), "marker should be gone after strip");
-        assert!(after.contains("export FOO=bar"), "original content preserved");
+        assert!(
+            after.contains("export FOO=bar"),
+            "original content preserved"
+        );
     }
 }

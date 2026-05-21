@@ -2,7 +2,7 @@ use std::env;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 
 use crate::engine::osv;
 
@@ -67,9 +67,14 @@ impl PackageManager {
 
     pub fn all() -> Vec<Self> {
         vec![
-            Self::Pip, Self::Uv, Self::Poetry,
-            Self::Npm, Self::Yarn, Self::Pnpm,
-            Self::Go, Self::Cargo,
+            Self::Pip,
+            Self::Uv,
+            Self::Poetry,
+            Self::Npm,
+            Self::Yarn,
+            Self::Pnpm,
+            Self::Go,
+            Self::Cargo,
         ]
     }
 }
@@ -111,7 +116,11 @@ pub fn extract_packages(pm: &PackageManager, args: &[String]) -> Option<Vec<Pack
         .map(|spec| parse_package_spec(pm, spec))
         .collect();
 
-    if packages.is_empty() { None } else { Some(packages) }
+    if packages.is_empty() {
+        None
+    } else {
+        Some(packages)
+    }
 }
 
 fn parse_package_spec(pm: &PackageManager, spec: &str) -> PackageArg {
@@ -123,20 +132,28 @@ fn parse_package_spec(pm: &PackageManager, spec: &str) -> PackageArg {
         | PackageManager::Cargo => {
             // spec formats: lodash@4.17.21, golang.org/x/net@v0.1.0, serde@1.0
             if let Some((name, ver)) = spec.split_once('@') {
-                PackageArg { name: name.to_owned(), version: Some(ver.to_owned()) }
+                PackageArg {
+                    name: name.to_owned(),
+                    version: Some(ver.to_owned()),
+                }
             } else {
-                PackageArg { name: spec.to_owned(), version: None }
+                PackageArg {
+                    name: spec.to_owned(),
+                    version: None,
+                }
             }
         }
         PackageManager::Pip | PackageManager::Uv | PackageManager::Poetry => {
             // spec formats: requests, requests==2.28.0, requests>=2.0, requests[security]
-            let name_end = spec
-                .find(['=', '>', '<', '!', '['])
-                .unwrap_or(spec.len());
+            let name_end = spec.find(['=', '>', '<', '!', '[']).unwrap_or(spec.len());
             let name = spec[..name_end].trim().to_owned();
-            let version = spec
-                .find("==")
-                .map(|i| spec[i + 2..].split_whitespace().next().unwrap_or("").to_owned());
+            let version = spec.find("==").map(|i| {
+                spec[i + 2..]
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("")
+                    .to_owned()
+            });
             PackageArg { name, version }
         }
     }
@@ -236,12 +253,18 @@ mod tests {
 
     #[test]
     fn detects_pip_from_full_path() {
-        assert_eq!(PackageManager::from_argv0("/usr/bin/pip"), Some(PackageManager::Pip));
+        assert_eq!(
+            PackageManager::from_argv0("/usr/bin/pip"),
+            Some(PackageManager::Pip)
+        );
     }
 
     #[test]
     fn detects_pip3() {
-        assert_eq!(PackageManager::from_argv0("pip3"), Some(PackageManager::Pip));
+        assert_eq!(
+            PackageManager::from_argv0("pip3"),
+            Some(PackageManager::Pip)
+        );
     }
 
     #[test]
@@ -251,7 +274,10 @@ mod tests {
 
     #[test]
     fn detects_cargo() {
-        assert_eq!(PackageManager::from_argv0("/Users/user/.cargo/bin/cargo"), Some(PackageManager::Cargo));
+        assert_eq!(
+            PackageManager::from_argv0("/Users/user/.cargo/bin/cargo"),
+            Some(PackageManager::Cargo)
+        );
     }
 
     #[test]
@@ -279,7 +305,8 @@ mod tests {
 
     #[test]
     fn pip_install_with_version() {
-        let pkgs = extract_packages(&PackageManager::Pip, &args("install requests==2.28.0")).unwrap();
+        let pkgs =
+            extract_packages(&PackageManager::Pip, &args("install requests==2.28.0")).unwrap();
         assert_eq!(pkgs[0].name, "requests");
         assert_eq!(pkgs[0].version, Some("2.28.0".into()));
     }
@@ -291,7 +318,9 @@ mod tests {
 
     #[test]
     fn pip_install_flags_only_passes_through() {
-        assert!(extract_packages(&PackageManager::Pip, &args("install -r requirements.txt")).is_none());
+        assert!(
+            extract_packages(&PackageManager::Pip, &args("install -r requirements.txt")).is_none()
+        );
     }
 
     #[test]

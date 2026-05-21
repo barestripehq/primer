@@ -4,17 +4,20 @@ mod cli;
 mod config;
 mod engine;
 mod manifest;
-mod summary;
 mod prompt;
 mod report;
 mod shim;
+mod summary;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand, ValueEnum};
 use engine::osv;
 
 #[derive(Parser)]
-#[command(name = "primer", about = "Pre-install security interceptor for package managers")]
+#[command(
+    name = "primer",
+    about = "Pre-install security interceptor for package managers"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -136,7 +139,14 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Scan { package, ecosystem, version, force, verbose, ai } => {
+        Commands::Scan {
+            package,
+            ecosystem,
+            version,
+            force,
+            verbose,
+            ai,
+        } => {
             let eco = ecosystem.as_osv_str();
             println!("Scanning {} ({}) ...", package, eco);
 
@@ -160,10 +170,20 @@ async fn main() -> Result<()> {
             }
         }
 
-        Commands::UpdateModels { from, tokenizer, repo, file } => {
+        Commands::UpdateModels {
+            from,
+            tokenizer,
+            repo,
+            file,
+        } => {
             #[cfg(feature = "ai")]
             {
-                let opts = summary::download::DownloadOptions { from, tokenizer, repo, file };
+                let opts = summary::download::DownloadOptions {
+                    from,
+                    tokenizer,
+                    repo,
+                    file,
+                };
                 summary::download::run(opts).await?;
             }
             #[cfg(not(feature = "ai"))]
@@ -181,19 +201,27 @@ async fn main() -> Result<()> {
             allowlist::add(&package, eco)?;
         }
 
-        Commands::Cache { command: CacheCommands::Clear } => {
-            match cache::clear() {
-                Ok(0) => println!("Cache is already empty."),
-                Ok(n) => println!("Cleared {} cached entr{}.", n, if n == 1 { "y" } else { "ies" }),
-                Err(e) => eprintln!("Failed to clear cache: {}", e),
-            }
-        }
+        Commands::Cache {
+            command: CacheCommands::Clear,
+        } => match cache::clear() {
+            Ok(0) => println!("Cache is already empty."),
+            Ok(n) => println!(
+                "Cleared {} cached entr{}.",
+                n,
+                if n == 1 { "y" } else { "ies" }
+            ),
+            Err(e) => eprintln!("Failed to clear cache: {}", e),
+        },
 
         Commands::Init => cli::init::run()?,
         Commands::Uninit { purge } => cli::uninit::run(purge)?,
         Commands::Doctor => cli::doctor::run()?,
-        Commands::Hook { command: HookCommands::Install } => cli::hook::install()?,
-        Commands::Hook { command: HookCommands::Check } => cli::hook::check().await?,
+        Commands::Hook {
+            command: HookCommands::Install,
+        } => cli::hook::install()?,
+        Commands::Hook {
+            command: HookCommands::Check,
+        } => cli::hook::check().await?,
     }
 
     Ok(())
@@ -204,16 +232,17 @@ async fn main() -> Result<()> {
 // ---------------------------------------------------------------------------
 
 fn show_ai_summary(vulns: &[osv::Vulnerability]) {
-    if std::env::var("PRIMER_AI").map(|v| v == "0").unwrap_or(false) {
+    if std::env::var("PRIMER_AI")
+        .map(|v| v == "0")
+        .unwrap_or(false)
+    {
         return;
     }
 
     #[cfg(not(feature = "ai"))]
     {
         let _ = vulns;
-        eprintln!(
-            "  ℹ  --ai requires the AI feature: cargo install primer --features ai"
-        );
+        eprintln!("  ℹ  --ai requires the AI feature: cargo install primer --features ai");
     }
 
     #[cfg(feature = "ai")]

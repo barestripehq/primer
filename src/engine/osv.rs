@@ -75,7 +75,15 @@ pub async fn query(
     version: Option<&str>,
     verbose: bool,
 ) -> Result<Vec<Vulnerability>> {
-    query_inner(OSV_API, &crate::cache::cache_dir(), package, ecosystem, version, verbose).await
+    query_inner(
+        OSV_API,
+        &crate::cache::cache_dir(),
+        package,
+        ecosystem,
+        version,
+        verbose,
+    )
+    .await
 }
 
 /// Testable variant — accepts injectable base URL and cache directory.
@@ -105,14 +113,21 @@ pub(crate) async fn query_inner(
 
     match query_with_base(base_url, package, ecosystem, version).await {
         Ok(vulns) => {
-            if let Err(e) = crate::cache::put_to_dir(cache_dir, package, ecosystem, version, &vulns, now) {
+            if let Err(e) =
+                crate::cache::put_to_dir(cache_dir, package, ecosystem, version, &vulns, now)
+            {
                 eprintln!("primer: cache write failed: {}", e);
             }
             Ok(vulns)
         }
         Err(e) => {
-            if let Some(vulns) = crate::cache::get_stale_from_dir(cache_dir, package, ecosystem, version) {
-                eprintln!("⚠  primer: OSV unreachable ({}), using stale cache for {}", e, package);
+            if let Some(vulns) =
+                crate::cache::get_stale_from_dir(cache_dir, package, ecosystem, version)
+            {
+                eprintln!(
+                    "⚠  primer: OSV unreachable ({}), using stale cache for {}",
+                    e, package
+                );
                 return Ok(vulns);
             }
             Err(e)
@@ -130,7 +145,10 @@ pub async fn query_with_base(
     let client = reqwest::Client::new();
 
     let body = OsvRequest {
-        package: OsvPackage { name: package, ecosystem },
+        package: OsvPackage {
+            name: package,
+            ecosystem,
+        },
         version,
     };
 
@@ -151,7 +169,11 @@ pub async fn query_with_base(
         .map(|v| Vulnerability {
             id: v.id,
             summary: v.summary,
-            cvss_vector: v.severity.into_iter().find(|s| s.kind.starts_with("CVSS")).map(|s| s.score),
+            cvss_vector: v
+                .severity
+                .into_iter()
+                .find(|s| s.kind.starts_with("CVSS"))
+                .map(|s| s.score),
             severity: v.database_specific.and_then(|d| d.severity),
         })
         .collect();
@@ -217,7 +239,8 @@ mod tests {
     #[tokio::test]
     async fn returns_empty_vec_when_osv_has_no_vulns() {
         let mut server = Server::new_async().await;
-        let mock = server.mock("POST", "/query")
+        let mock = server
+            .mock("POST", "/query")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(r#"{}"#)
@@ -242,21 +265,33 @@ mod tests {
             }]
         }"#;
 
-        let mock = server.mock("POST", "/query")
+        let mock = server
+            .mock("POST", "/query")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(body)
             .create_async()
             .await;
 
-        let vulns = query_with_base(&server.url(), "test-pkg", "PyPI", None).await.unwrap();
+        let vulns = query_with_base(&server.url(), "test-pkg", "PyPI", None)
+            .await
+            .unwrap();
         mock.assert_async().await;
 
         assert_eq!(vulns.len(), 1);
         assert_eq!(vulns[0].id, "GHSA-test-1234-5678");
-        assert_eq!(vulns[0].summary.as_deref(), Some("Remote code execution in test-pkg"));
+        assert_eq!(
+            vulns[0].summary.as_deref(),
+            Some("Remote code execution in test-pkg")
+        );
         assert_eq!(vulns[0].severity.as_deref(), Some("CRITICAL"));
-        assert!(vulns[0].cvss_vector.as_deref().unwrap().starts_with("CVSS:3.1"));
+        assert!(
+            vulns[0]
+                .cvss_vector
+                .as_deref()
+                .unwrap()
+                .starts_with("CVSS:3.1")
+        );
         assert_eq!(vulns[0].severity_label(), "CRITICAL");
     }
 
@@ -272,14 +307,17 @@ mod tests {
             }]
         }"#;
 
-        let mock = server.mock("POST", "/query")
+        let mock = server
+            .mock("POST", "/query")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(body)
             .create_async()
             .await;
 
-        let vulns = query_with_base(&server.url(), "requests", "PyPI", None).await.unwrap();
+        let vulns = query_with_base(&server.url(), "requests", "PyPI", None)
+            .await
+            .unwrap();
         mock.assert_async().await;
 
         assert_eq!(vulns[0].severity_label(), "UNKNOWN");
@@ -306,9 +344,16 @@ mod tests {
         crate::cache::put_to_dir(dir.path(), "requests", "PyPI", None, &cached, 1000).unwrap();
 
         // Dead URL — would error if network were reached.
-        let result = query_inner("http://127.0.0.1:1", dir.path(), "requests", "PyPI", None, false)
-            .await
-            .unwrap();
+        let result = query_inner(
+            "http://127.0.0.1:1",
+            dir.path(),
+            "requests",
+            "PyPI",
+            None,
+            false,
+        )
+        .await
+        .unwrap();
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].id, "GHSA-cached");
@@ -327,9 +372,16 @@ mod tests {
         crate::cache::put_to_dir(dir.path(), "requests", "PyPI", None, &stale, 0).unwrap();
 
         // Dead URL triggers network error → should fall back to stale entry.
-        let result = query_inner("http://127.0.0.1:1", dir.path(), "requests", "PyPI", None, false)
-            .await
-            .unwrap();
+        let result = query_inner(
+            "http://127.0.0.1:1",
+            dir.path(),
+            "requests",
+            "PyPI",
+            None,
+            false,
+        )
+        .await
+        .unwrap();
 
         assert_eq!(result[0].id, "GHSA-stale");
     }
@@ -338,7 +390,8 @@ mod tests {
     async fn query_inner_writes_network_result_to_cache() {
         let mut server = Server::new_async().await;
         let body = r#"{"vulns":[{"id":"GHSA-net-0001","summary":null,"severity":[],"database_specific":{"severity":"LOW"}}]}"#;
-        let mock = server.mock("POST", "/query")
+        let mock = server
+            .mock("POST", "/query")
             .with_status(200)
             .with_header("content-type", "application/json")
             .with_body(body)
@@ -365,7 +418,10 @@ mod tests {
     #[ignore = "hits live OSV API — run with: cargo test -- --ignored"]
     async fn live_pillow_9_0_0_has_critical_vulns() {
         let vulns = query("pillow", "PyPI", Some("9.0.0"), false).await.unwrap();
-        assert!(!vulns.is_empty(), "expected vulnerabilities for pillow 9.0.0");
+        assert!(
+            !vulns.is_empty(),
+            "expected vulnerabilities for pillow 9.0.0"
+        );
         let has_critical = vulns.iter().any(|v| v.severity_label() == "CRITICAL");
         assert!(has_critical, "expected at least one CRITICAL finding");
     }
@@ -373,7 +429,9 @@ mod tests {
     #[tokio::test]
     #[ignore = "hits live OSV API — run with: cargo test -- --ignored"]
     async fn live_nonexistent_package_returns_empty() {
-        let vulns = query("zzz-nonexistent-pkg-primer", "PyPI", None, false).await.unwrap();
+        let vulns = query("zzz-nonexistent-pkg-primer", "PyPI", None, false)
+            .await
+            .unwrap();
         assert!(vulns.is_empty());
     }
 }

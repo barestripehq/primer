@@ -1,8 +1,8 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
-use candle_core::{DType, Device, Tensor};
 use candle_core::quantized::gguf_file;
+use candle_core::{DType, Device, Tensor};
 use candle_transformers::generation::LogitsProcessor;
 use candle_transformers::models::quantized_llama::ModelWeights;
 use tokenizers::Tokenizer;
@@ -35,10 +35,9 @@ pub fn run(vulns: &[Vulnerability], model_path: &Path, tokenizer_path: &Path) ->
     // Load GGUF weights.
     let mut file = std::fs::File::open(model_path)
         .with_context(|| format!("opening model file {}", model_path.display()))?;
-    let content = gguf_file::Content::read(&mut file)
-        .context("parsing GGUF file")?;
-    let mut model = ModelWeights::from_gguf(content, &mut file, &device)
-        .context("loading model weights")?;
+    let content = gguf_file::Content::read(&mut file).context("parsing GGUF file")?;
+    let mut model =
+        ModelWeights::from_gguf(content, &mut file, &device).context("loading model weights")?;
 
     // Load tokenizer.
     let tokenizer = Tokenizer::from_file(tokenizer_path)
@@ -64,8 +63,7 @@ pub fn run(vulns: &[Vulnerability], model_path: &Path, tokenizer_path: &Path) ->
 
     for _ in 0..MAX_NEW_TOKENS {
         let ctx_start = tokens.len().saturating_sub(MAX_CTX);
-        let input =
-            Tensor::new(&tokens[ctx_start..], &device)?.unsqueeze(0)?;
+        let input = Tensor::new(&tokens[ctx_start..], &device)?.unsqueeze(0)?;
         let logits = model
             .forward(&input, ctx_start)?
             .squeeze(0)?

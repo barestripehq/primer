@@ -3,7 +3,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Command;
 
-use anyhow::{bail, Context, Result};
+use anyhow::{Context, Result, bail};
 use colored::Colorize;
 
 use crate::engine::osv;
@@ -49,24 +49,18 @@ pub async fn check() -> Result<()> {
     let mut blocked = false;
 
     for (name, version, ecosystem) in &new_packages {
-        println!(
-            "primer: scanning {} ({}) …",
-            name.bold(),
-            ecosystem
-        );
+        println!("primer: scanning {} ({}) …", name.bold(), ecosystem);
 
         match osv::query(name, ecosystem, version.as_deref(), false).await {
             Ok(vulns) if vulns.is_empty() => {
                 println!("  {} No vulnerabilities found.", "✓".green());
             }
-            Ok(vulns) => {
-                match prompt::evaluate(name, ecosystem, &vulns, false) {
-                    prompt::Decision::Abort => {
-                        blocked = true;
-                    }
-                    prompt::Decision::Proceed => {}
+            Ok(vulns) => match prompt::evaluate(name, ecosystem, &vulns, false) {
+                prompt::Decision::Abort => {
+                    blocked = true;
                 }
-            }
+                prompt::Decision::Proceed => {}
+            },
             Err(e) => {
                 eprintln!("  {} Scan skipped: {} (proceeding)", "⚠".yellow(), e);
             }
@@ -175,7 +169,8 @@ mod tests {
 
         let pkgs = collect_new_packages_in(Some(dir.path())).unwrap();
         assert!(
-            pkgs.iter().any(|(name, _, eco)| name == "pillow" && *eco == "PyPI"),
+            pkgs.iter()
+                .any(|(name, _, eco)| name == "pillow" && *eco == "PyPI"),
             "expected pillow/PyPI in {:?}",
             pkgs
         );

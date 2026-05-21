@@ -44,10 +44,10 @@ fn is_blocking(label: &str) -> bool {
 fn color_severity(label: &str) -> colored::ColoredString {
     match label {
         "CRITICAL" => label.red().bold(),
-        "HIGH"     => label.yellow().bold(),
-        "MEDIUM"   => label.blue().bold(),
-        "LOW"      => label.green().bold(),
-        _          => label.white().dimmed(),
+        "HIGH" => label.yellow().bold(),
+        "MEDIUM" => label.blue().bold(),
+        "LOW" => label.green().bold(),
+        _ => label.white().dimmed(),
     }
 }
 
@@ -57,13 +57,15 @@ fn color_severity(label: &str) -> colored::ColoredString {
 
 /// Evaluate findings and return whether the install should proceed.
 /// Handles force, CI, and interactive modes.
-pub fn evaluate(
-    package: &str,
-    ecosystem: &str,
-    vulns: &[Vulnerability],
-    force: bool,
-) -> Decision {
-    evaluate_inner(package, ecosystem, vulns, force || force_flag(), is_ci(), ci_allow_all())
+pub fn evaluate(package: &str, ecosystem: &str, vulns: &[Vulnerability], force: bool) -> Decision {
+    evaluate_inner(
+        package,
+        ecosystem,
+        vulns,
+        force || force_flag(),
+        is_ci(),
+        ci_allow_all(),
+    )
 }
 
 /// Testable inner function with explicit flags instead of env var reads.
@@ -79,14 +81,21 @@ pub(crate) fn evaluate_inner(
         return Decision::Proceed;
     }
 
-    let blocking: Vec<&Vulnerability> = vulns.iter().filter(|v| is_blocking(v.severity_label())).collect();
+    let blocking: Vec<&Vulnerability> = vulns
+        .iter()
+        .filter(|v| is_blocking(v.severity_label()))
+        .collect();
 
     if force {
         eprintln!(
             "{} {} {} {} — proceeding (--force)",
             "⚠".yellow(),
             blocking.len(),
-            if blocking.len() == 1 { "blocking vulnerability" } else { "blocking vulnerabilities" },
+            if blocking.len() == 1 {
+                "blocking vulnerability"
+            } else {
+                "blocking vulnerabilities"
+            },
             format!("in {}", package).bold(),
         );
         return Decision::Proceed;
@@ -111,7 +120,10 @@ fn ci_decision_inner(
     allow_all: bool,
 ) -> Decision {
     if allow_all {
-        eprintln!("primer: PRIMER_CI_MODE=allow-all — scan skipped for {}", package);
+        eprintln!(
+            "primer: PRIMER_CI_MODE=allow-all — scan skipped for {}",
+            package
+        );
         return Decision::Proceed;
     }
 
@@ -128,7 +140,11 @@ fn ci_decision_inner(
             "✗".red().bold(),
             package.bold(),
             blocking.len(),
-            if blocking.len() == 1 { "finding" } else { "findings" },
+            if blocking.len() == 1 {
+                "finding"
+            } else {
+                "findings"
+            },
         );
         return Decision::Abort;
     }
@@ -151,7 +167,11 @@ fn interactive_decision(
         "{} {} {} found for {}",
         "⚠".yellow().bold(),
         vulns.len(),
-        if vulns.len() == 1 { "vulnerability" } else { "vulnerabilities" },
+        if vulns.len() == 1 {
+            "vulnerability"
+        } else {
+            "vulnerabilities"
+        },
         package.bold(),
     );
     eprintln!();
@@ -189,7 +209,11 @@ fn interactive_decision(
         "  {} {} CRITICAL/HIGH {} detected.",
         "!".red().bold(),
         blocking.len(),
-        if blocking.len() == 1 { "vulnerability" } else { "vulnerabilities" },
+        if blocking.len() == 1 {
+            "vulnerability"
+        } else {
+            "vulnerabilities"
+        },
     );
     eprintln!();
 
@@ -264,25 +288,37 @@ mod tests {
     #[test]
     fn ci_allow_all_proceeds() {
         let vulns = vec![vuln("GHSA-0001", "CRITICAL")];
-        assert_eq!(evaluate_inner("pkg", "PyPI", &vulns, false, true, true), Decision::Proceed);
+        assert_eq!(
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, true),
+            Decision::Proceed
+        );
     }
 
     #[test]
     fn ci_blocks_on_critical() {
         let vulns = vec![vuln("GHSA-0001", "CRITICAL")];
-        assert_eq!(evaluate_inner("pkg", "PyPI", &vulns, false, true, false), Decision::Abort);
+        assert_eq!(
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, false),
+            Decision::Abort
+        );
     }
 
     #[test]
     fn ci_proceeds_on_low_only() {
         let vulns = vec![vuln("GHSA-0001", "LOW")];
-        assert_eq!(evaluate_inner("pkg", "PyPI", &vulns, false, true, false), Decision::Proceed);
+        assert_eq!(
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, false),
+            Decision::Proceed
+        );
     }
 
     #[test]
     fn ci_proceeds_on_medium_only() {
         let vulns = vec![vuln("GHSA-0001", "MEDIUM")];
-        assert_eq!(evaluate_inner("pkg", "PyPI", &vulns, false, true, false), Decision::Proceed);
+        assert_eq!(
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, false),
+            Decision::Proceed
+        );
     }
 
     #[test]

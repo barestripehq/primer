@@ -38,10 +38,9 @@ fn check_path_order(ms_bin: &Path) {
     let vm_positions: Vec<(&str, usize)> = VERSION_MANAGERS
         .iter()
         .filter_map(|vm| {
-            dirs.iter().position(|d| {
-                d.to_str().map(|s| s.contains(vm)).unwrap_or(false)
-            })
-            .map(|pos| (*vm, pos))
+            dirs.iter()
+                .position(|d| d.to_str().map(|s| s.contains(vm)).unwrap_or(false))
+                .map(|pos| (*vm, pos))
         })
         .collect();
 
@@ -51,7 +50,10 @@ fn check_path_order(ms_bin: &Path) {
             println!("  ✓ ~/.primer/bin at position {}", pos);
             for (vm, vm_pos) in &vm_positions {
                 if *vm_pos < pos {
-                    println!("  ✗ {} is at position {} (before primer) — shims may be bypassed", vm, vm_pos);
+                    println!(
+                        "  ✗ {} is at position {} (before primer) — shims may be bypassed",
+                        vm, vm_pos
+                    );
                 } else {
                     println!("  ✓ {} is at position {} (after primer)", vm, vm_pos);
                 }
@@ -74,13 +76,24 @@ fn check_shims(ms_bin: &Path) {
 
         match (shim.exists(), real) {
             (true, Some(real_path)) => {
-                println!("  ✓ {}  →  {} (real: {})", pm.name(), shim.display(), real_path.display());
+                println!(
+                    "  ✓ {}  →  {} (real: {})",
+                    pm.name(),
+                    shim.display(),
+                    real_path.display()
+                );
             }
             (true, None) => {
-                println!("  ✗ {} shim exists but real binary not found in PATH", pm.name());
+                println!(
+                    "  ✗ {} shim exists but real binary not found in PATH",
+                    pm.name()
+                );
             }
             (false, Some(_)) => {
-                println!("  · {} installed but not shimmed — run `primer init`", pm.name());
+                println!(
+                    "  · {} installed but not shimmed — run `primer init`",
+                    pm.name()
+                );
             }
             (false, None) => {
                 println!("  · {} not installed", pm.name());
@@ -138,7 +151,9 @@ fn check_model(_ms_bin: &Path) {
 
     // Tokenizer file
     if tokenizer_path.exists() {
-        let size = std::fs::metadata(&tokenizer_path).map(|m| m.len()).unwrap_or(0);
+        let size = std::fs::metadata(&tokenizer_path)
+            .map(|m| m.len())
+            .unwrap_or(0);
         println!(
             "  ✓ tokenizer {} ({:.1} KB)",
             tokenizer_path.display(),
@@ -157,7 +172,9 @@ fn check_model(_ms_bin: &Path) {
 // ---------------------------------------------------------------------------
 
 fn walk_dir_stats(dir: &Path) -> (usize, u64) {
-    let Ok(entries) = std::fs::read_dir(dir) else { return (0, 0) };
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return (0, 0);
+    };
     entries
         .filter_map(|e| e.ok())
         .fold((0, 0), |(count, bytes), entry| {

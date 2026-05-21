@@ -73,7 +73,6 @@ pub fn generate(vulns: &[Vulnerability]) -> Option<Summary> {
 
 #[cfg(test)]
 mod tests {
-    
 
     #[test]
     #[cfg(feature = "ai")]

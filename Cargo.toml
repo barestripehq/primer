@@ -3,6 +3,13 @@ name = "primer"
 version = "0.1.0"
 edition = "2024"
 description = "Pre-install security interceptor for package managers"
+repository = "https://github.com/callezenwaka/primer"
+homepage = "https://primer-scan.netlify.app"
+authors = ["Callis Ezenwaka <callisezenwaka@outlook.com>"]
+license = "MIT"
+readme = "README.md"
+keywords = ["security", "vulnerability", "package-manager", "cve", "osv"]
+categories = ["command-line-utilities", "development-tools"]
 
 [[bin]]
 name = "primer"

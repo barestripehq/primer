@@ -51,7 +51,12 @@ fn create_shim(self_path: &Path, shim_path: &Path, name: &str, real: &Path) -> R
     }
     std::os::unix::fs::symlink(self_path, shim_path)
         .with_context(|| format!("could not create shim for {}", name))?;
-    println!("  ✓ {} → {} (real: {})", shim_path.display(), self_path.display(), real.display());
+    println!(
+        "  ✓ {} → {} (real: {})",
+        shim_path.display(),
+        self_path.display(),
+        real.display()
+    );
     Ok(())
 }
 
@@ -79,7 +84,7 @@ fn update_shell_configs(ms_bin: &Path) -> Result<()> {
     // Files to update, in priority order.
     let candidates: &[(&str, &str)] = &[
         (".zshenv", "zsh (all shells)"),
-        (".zshrc",  "zsh (interactive)"),
+        (".zshrc", "zsh (interactive)"),
         (".bashrc", "bash"),
         (".bash_profile", "bash login"),
         (".config/fish/config.fish", "fish"),
@@ -91,9 +96,9 @@ fn update_shell_configs(ms_bin: &Path) -> Result<()> {
             continue;
         }
         match append_path_line(&path, ms_bin) {
-            Ok(true)  => println!("  ✓ Updated {} ({})", path.display(), label),
+            Ok(true) => println!("  ✓ Updated {} ({})", path.display(), label),
             Ok(false) => println!("  · Already configured in {} ({})", path.display(), label),
-            Err(e)    => println!("  ✗ Could not update {}: {}", path.display(), e),
+            Err(e) => println!("  ✗ Could not update {}: {}", path.display(), e),
         }
     }
 
@@ -108,7 +113,11 @@ pub(crate) fn append_path_line(config_file: &Path, _ms_bin: &Path) -> Result<boo
         return Ok(false);
     }
 
-    let addition = if config_file.extension().map(|e| e == "fish").unwrap_or(false) {
+    let addition = if config_file
+        .extension()
+        .map(|e| e == "fish")
+        .unwrap_or(false)
+    {
         // fish uses set -gx instead of export
         format!("\n{MARKER}\nfish_add_path \"$HOME/.primer/bin\"\n")
     } else {
@@ -152,9 +161,16 @@ mod tests {
         let (_f, path) = temp_file("# existing content\n");
         append_path_line(&path, &PathBuf::new()).unwrap();
         let result = append_path_line(&path, &PathBuf::new()).unwrap();
-        assert!(!result, "second call should return false (already configured)");
+        assert!(
+            !result,
+            "second call should return false (already configured)"
+        );
         let contents = fs::read_to_string(&path).unwrap();
-        assert_eq!(contents.matches(MARKER).count(), 1, "marker should appear exactly once");
+        assert_eq!(
+            contents.matches(MARKER).count(),
+            1,
+            "marker should appear exactly once"
+        );
     }
 
     #[test]
