@@ -1,11 +1,11 @@
 [package]
-name = "motionstream"
+name = "primer"
 version = "0.1.0"
 edition = "2024"
 description = "Pre-install security interceptor for package managers"
 
 [[bin]]
-name = "motionstream"
+name = "primer"
 path = "src/main.rs"
 
 [features]
@@ -56,6 +56,6 @@ targets = [
   "x86_64-pc-windows-msvc",
 ]
 # Ship the AI feature in release binaries so --ai works out of the box.
-# Users who skip `motionstream update-models` simply never use the flag.
+# Users who skip `primer update-models` simply never use the flag.
 features = ["ai"]
 pr-run-mode = "plan"

@@ -8,9 +8,9 @@ use crate::shim::PackageManager;
 const VERSION_MANAGERS: &[&str] = &["nvm", "pyenv", "asdf", "volta", "fnm", "rtx", "mise"];
 
 pub fn run() -> Result<()> {
-    let ms_bin = motionstream_bin_dir();
+    let ms_bin = primer_bin_dir();
 
-    println!("motionstream doctor\n");
+    println!("primer doctor\n");
 
     check_path_order(&ms_bin);
     println!();
@@ -46,14 +46,14 @@ fn check_path_order(ms_bin: &Path) {
         .collect();
 
     match ms_pos {
-        None => println!("  ✗ ~/.motionstream/bin not found in PATH — run `motionstream init`"),
+        None => println!("  ✗ ~/.primer/bin not found in PATH — run `primer init`"),
         Some(pos) => {
-            println!("  ✓ ~/.motionstream/bin at position {}", pos);
+            println!("  ✓ ~/.primer/bin at position {}", pos);
             for (vm, vm_pos) in &vm_positions {
                 if *vm_pos < pos {
-                    println!("  ✗ {} is at position {} (before motionstream) — shims may be bypassed", vm, vm_pos);
+                    println!("  ✗ {} is at position {} (before primer) — shims may be bypassed", vm, vm_pos);
                 } else {
-                    println!("  ✓ {} is at position {} (after motionstream)", vm, vm_pos);
+                    println!("  ✓ {} is at position {} (after primer)", vm, vm_pos);
                 }
             }
         }
@@ -80,7 +80,7 @@ fn check_shims(ms_bin: &Path) {
                 println!("  ✗ {} shim exists but real binary not found in PATH", pm.name());
             }
             (false, Some(_)) => {
-                println!("  · {} installed but not shimmed — run `motionstream init`", pm.name());
+                println!("  · {} installed but not shimmed — run `primer init`", pm.name());
             }
             (false, None) => {
                 println!("  · {} not installed", pm.name());
@@ -132,7 +132,7 @@ fn check_model(_ms_bin: &Path) {
             size as f64 / (1024.0 * 1024.0)
         );
     } else {
-        println!("  ✗ model     not found — run `motionstream update-models`");
+        println!("  ✗ model     not found — run `primer update-models`");
         println!("             expected: {}", model_path.display());
     }
 
@@ -145,7 +145,7 @@ fn check_model(_ms_bin: &Path) {
             size as f64 / 1024.0
         );
     } else {
-        println!("  ✗ tokenizer not found — run `motionstream update-models`");
+        println!("  ✗ tokenizer not found — run `primer update-models`");
     }
 
     #[cfg(not(feature = "ai"))]
@@ -166,7 +166,7 @@ fn walk_dir_stats(dir: &Path) -> (usize, u64) {
         })
 }
 
-fn motionstream_bin_dir() -> PathBuf {
+fn primer_bin_dir() -> PathBuf {
     let home = env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    PathBuf::from(home).join(".motionstream").join("bin")
+    PathBuf::from(home).join(".primer").join("bin")
 }

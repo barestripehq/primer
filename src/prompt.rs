@@ -24,13 +24,13 @@ pub fn is_ci() -> bool {
 }
 
 pub fn ci_allow_all() -> bool {
-    std::env::var("MOTIONSTREAM_CI_MODE")
+    std::env::var("PRIMER_CI_MODE")
         .map(|v| v.to_lowercase() == "allow-all")
         .unwrap_or(false)
 }
 
 pub fn force_flag() -> bool {
-    std::env::var("MOTIONSTREAM_FORCE").is_ok()
+    std::env::var("PRIMER_FORCE").is_ok()
 }
 
 // ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@ fn ci_decision_inner(
     allow_all: bool,
 ) -> Decision {
     if allow_all {
-        eprintln!("motionstream: MOTIONSTREAM_CI_MODE=allow-all — scan skipped for {}", package);
+        eprintln!("primer: PRIMER_CI_MODE=allow-all — scan skipped for {}", package);
         return Decision::Proceed;
     }
 
@@ -121,10 +121,10 @@ fn ci_decision_inner(
     if !blocking.is_empty() {
         // Write JSON report then block.
         if let Err(e) = crate::report::write(package, ecosystem, vulns) {
-            eprintln!("motionstream: could not write report: {}", e);
+            eprintln!("primer: could not write report: {}", e);
         }
         eprintln!(
-            "{} Blocking install of {} ({} CRITICAL/HIGH {}). Report: motionstream-report.json",
+            "{} Blocking install of {} ({} CRITICAL/HIGH {}). Report: primer-report.json",
             "✗".red().bold(),
             package.bold(),
             blocking.len(),
@@ -206,7 +206,7 @@ fn interactive_decision(
     } else {
         eprintln!(
             "  Aborted. To bypass: {} {} install {}",
-            "MOTIONSTREAM_FORCE=1".dimmed(),
+            "PRIMER_FORCE=1".dimmed(),
             package,
             package,
         );

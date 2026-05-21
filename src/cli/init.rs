@@ -7,13 +7,13 @@ use anyhow::{Context, Result};
 use crate::shim::PackageManager;
 
 pub fn run() -> Result<()> {
-    let ms_bin = motionstream_bin_dir();
-    let self_path = env::current_exe().context("could not determine motionstream binary path")?;
+    let ms_bin = primer_bin_dir();
+    let self_path = env::current_exe().context("could not determine primer binary path")?;
 
     fs::create_dir_all(&ms_bin)
         .with_context(|| format!("could not create {}", ms_bin.display()))?;
 
-    println!("Initialising motionstream...\n");
+    println!("Initialising primer...\n");
 
     // Create one shim per PM that is installed on this system.
     let mut created = 0;
@@ -69,8 +69,8 @@ fn create_shim(self_path: &Path, shim_path: &Path, name: &str, real: &Path) -> R
 // Shell config update
 // ---------------------------------------------------------------------------
 
-const PATH_LINE: &str = r#"export PATH="$HOME/.motionstream/bin:$PATH""#;
-const MARKER: &str = "# motionstream";
+const PATH_LINE: &str = r#"export PATH="$HOME/.primer/bin:$PATH""#;
+const MARKER: &str = "# primer";
 
 fn update_shell_configs(ms_bin: &Path) -> Result<()> {
     let home = env::var("HOME").unwrap_or_else(|_| "/tmp".into());
@@ -110,7 +110,7 @@ pub(crate) fn append_path_line(config_file: &Path, _ms_bin: &Path) -> Result<boo
 
     let addition = if config_file.extension().map(|e| e == "fish").unwrap_or(false) {
         // fish uses set -gx instead of export
-        format!("\n{MARKER}\nfish_add_path \"$HOME/.motionstream/bin\"\n")
+        format!("\n{MARKER}\nfish_add_path \"$HOME/.primer/bin\"\n")
     } else {
         format!("\n{MARKER}\n{PATH_LINE}\n")
     };
@@ -119,9 +119,9 @@ pub(crate) fn append_path_line(config_file: &Path, _ms_bin: &Path) -> Result<boo
     Ok(true)
 }
 
-pub fn motionstream_bin_dir() -> PathBuf {
+pub fn primer_bin_dir() -> PathBuf {
     let home = env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    PathBuf::from(home).join(".motionstream").join("bin")
+    PathBuf::from(home).join(".primer").join("bin")
 }
 
 #[cfg(test)]

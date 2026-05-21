@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::engine::osv::Vulnerability;
 
-const REPORT_FILE: &str = "motionstream-report.json";
+const REPORT_FILE: &str = "primer-report.json";
 
 #[derive(Serialize)]
 struct Report<'a> {
@@ -23,7 +23,7 @@ struct Finding<'a> {
     cvss_vector: Option<&'a str>,
 }
 
-/// Write findings to `motionstream-report.json` in the current directory.
+/// Write findings to `primer-report.json` in the current directory.
 pub fn write(package: &str, ecosystem: &str, vulns: &[Vulnerability]) -> Result<()> {
     write_to_dir(std::path::Path::new("."), package, ecosystem, vulns)
 }

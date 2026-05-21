@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 pub fn config_dir() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    PathBuf::from(home).join(".motionstream")
+    PathBuf::from(home).join(".primer")
 }
 
 pub fn config_path() -> PathBuf {
@@ -38,13 +38,13 @@ pub struct AiConfig {
 // Read / write
 // ---------------------------------------------------------------------------
 
-/// Load config from `~/.motionstream/config.toml`.
+/// Load config from `~/.primer/config.toml`.
 /// Returns a default (empty) config if the file doesn't exist.
 pub fn load() -> Result<Config> {
     load_from(&config_path())
 }
 
-/// Write config to `~/.motionstream/config.toml`.
+/// Write config to `~/.primer/config.toml`.
 #[cfg(feature = "ai")]
 pub fn save(cfg: &Config) -> Result<()> {
     save_to(&config_path(), cfg)
@@ -58,6 +58,7 @@ pub(crate) fn load_from(path: &Path) -> Result<Config> {
     Ok(toml::from_str(&contents)?)
 }
 
+#[cfg(feature = "ai")]
 pub(crate) fn save_to(path: &Path, cfg: &Config) -> Result<()> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
@@ -82,13 +83,14 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ai")]
     fn roundtrip_with_model_path() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("config.toml");
 
         let mut cfg = Config::default();
-        cfg.ai.model = Some(PathBuf::from("/home/user/.motionstream/models/smollm2.gguf"));
-        cfg.ai.tokenizer = Some(PathBuf::from("/home/user/.motionstream/models/tokenizer.json"));
+        cfg.ai.model = Some(PathBuf::from("/home/user/.primer/models/smollm2.gguf"));
+        cfg.ai.tokenizer = Some(PathBuf::from("/home/user/.primer/models/tokenizer.json"));
 
         save_to(&path, &cfg).unwrap();
         let loaded = load_from(&path).unwrap();

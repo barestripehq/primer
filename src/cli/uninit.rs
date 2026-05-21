@@ -6,12 +6,12 @@ use anyhow::Result;
 
 use crate::shim::PackageManager;
 
-const MARKER: &str = "# motionstream";
+const MARKER: &str = "# primer";
 
 pub fn run(purge: bool) -> Result<()> {
-    println!("Removing motionstream shims...\n");
+    println!("Removing primer shims...\n");
 
-    let ms_bin = motionstream_bin_dir();
+    let ms_bin = primer_bin_dir();
 
     // Remove individual shim symlinks.
     let mut removed = 0;
@@ -72,7 +72,7 @@ fn remove_path_lines() -> Result<()> {
     Ok(())
 }
 
-/// Remove the `# motionstream` block from a config file.
+/// Remove the `# primer` block from a config file.
 /// Returns true if the file was modified.
 fn strip_marker_block(path: &std::path::Path) -> Result<bool> {
     let contents = fs::read_to_string(path)?;
@@ -101,9 +101,9 @@ fn strip_marker_block(path: &std::path::Path) -> Result<bool> {
     Ok(true)
 }
 
-fn motionstream_bin_dir() -> PathBuf {
+fn primer_bin_dir() -> PathBuf {
     let home = env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    PathBuf::from(home).join(".motionstream").join("bin")
+    PathBuf::from(home).join(".primer").join("bin")
 }
 
 #[cfg(test)]
@@ -121,13 +121,13 @@ mod tests {
 
     #[test]
     fn strips_marker_block_from_config() {
-        let content = "# existing\nexport FOO=bar\n\n# motionstream\nexport PATH=\"$HOME/.motionstream/bin:$PATH\"\n\n# after\n";
+        let content = "# existing\nexport FOO=bar\n\n# primer\nexport PATH=\"$HOME/.primer/bin:$PATH\"\n\n# after\n";
         let (_f, path) = temp_file(content);
         let result = strip_marker_block(&path).unwrap();
         assert!(result, "should return true (file modified)");
         let contents = fs::read_to_string(&path).unwrap();
         assert!(!contents.contains(MARKER));
-        assert!(!contents.contains(".motionstream"));
+        assert!(!contents.contains(".primer"));
         assert!(contents.contains("export FOO=bar"));
         assert!(contents.contains("# after"));
     }

@@ -1,0 +1,13 @@
+{
+  "package": "pkg",
+  "ecosystem": "PyPI",
+  "blocked": true,
+  "findings": [
+    {
+      "id": "GHSA-0001",
+      "severity": "CRITICAL",
+      "summary": "Test vuln GHSA-0001",
+      "cvss_vector": null
+    }
+  ]
+}

@@ -10,9 +10,9 @@ use crate::engine::osv;
 use crate::manifest::{self, MONITORED_MANIFESTS};
 use crate::prompt;
 
-// The hook script delegates all logic back to `motionstream hook check`.
+// The hook script delegates all logic back to `primer hook check`.
 const HOOK_SCRIPT: &str = "#!/bin/sh
-exec motionstream hook check
+exec primer hook check
 ";
 
 // ---------------------------------------------------------------------------
@@ -50,7 +50,7 @@ pub async fn check() -> Result<()> {
 
     for (name, version, ecosystem) in &new_packages {
         println!(
-            "motionstream: scanning {} ({}) …",
+            "primer: scanning {} ({}) …",
             name.bold(),
             ecosystem
         );

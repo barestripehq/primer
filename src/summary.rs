@@ -14,7 +14,7 @@ use crate::engine::osv::Vulnerability;
 
 pub fn models_dir() -> PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    PathBuf::from(home).join(".motionstream").join("models")
+    PathBuf::from(home).join(".primer").join("models")
 }
 
 pub fn default_model_path() -> PathBuf {
@@ -35,6 +35,7 @@ pub fn active_paths() -> (PathBuf, PathBuf) {
     (default_model_path(), default_tokenizer_path())
 }
 
+#[cfg(feature = "ai")]
 pub fn model_present() -> bool {
     let (model, tokenizer) = active_paths();
     model.exists() && tokenizer.exists()
@@ -72,7 +73,7 @@ pub fn generate(vulns: &[Vulnerability]) -> Option<Summary> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    
 
     #[test]
     #[cfg(feature = "ai")]
@@ -88,9 +89,8 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "ai")]
     fn model_present_false_when_dir_missing() {
-        // Override HOME to a temp dir that has no models
-        // We can't set_var safely, so just assert the function returns a bool
         let result = std::panic::catch_unwind(model_present);
         assert!(result.is_ok(), "model_present must not panic");
     }

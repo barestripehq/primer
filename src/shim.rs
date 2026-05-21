@@ -146,14 +146,14 @@ fn parse_package_spec(pm: &PackageManager, spec: &str) -> PackageArg {
 // Real binary lookup
 // ---------------------------------------------------------------------------
 
-fn motionstream_bin_dir() -> PathBuf {
+fn primer_bin_dir() -> PathBuf {
     let home = env::var("HOME").unwrap_or_else(|_| "/tmp".into());
-    PathBuf::from(home).join(".motionstream").join("bin")
+    PathBuf::from(home).join(".primer").join("bin")
 }
 
-/// Find the real PM binary, excluding ~/.motionstream/bin to avoid loops.
+/// Find the real PM binary, excluding ~/.primer/bin to avoid loops.
 pub fn find_real_binary(name: &str) -> Option<PathBuf> {
-    let shim_dir = motionstream_bin_dir();
+    let shim_dir = primer_bin_dir();
     let path_var = env::var_os("PATH")?;
 
     for dir in env::split_paths(&path_var) {
@@ -215,7 +215,7 @@ pub async fn run(pm: PackageManager, args: Vec<String>) -> Result<()> {
                     }
                 }
                 Ok(_) => {}
-                Err(e) => eprintln!("⚠  motionstream: scan skipped ({}) — proceeding", e),
+                Err(e) => eprintln!("⚠  primer: scan skipped ({}) — proceeding", e),
             }
         }
     }
@@ -255,8 +255,8 @@ mod tests {
     }
 
     #[test]
-    fn returns_none_for_motionstream() {
-        assert!(PackageManager::from_argv0("motionstream").is_none());
+    fn returns_none_for_primer() {
+        assert!(PackageManager::from_argv0("primer").is_none());
     }
 
     #[test]

@@ -3,9 +3,9 @@ use std::path::PathBuf;
 
 use anyhow::Result;
 
-const IGNORE_FILE: &str = ".motionstream-ignore";
+const IGNORE_FILE: &str = ".primer-ignore";
 
-/// Check if a package is in the nearest .motionstream-ignore file.
+/// Check if a package is in the nearest .primer-ignore file.
 /// Walks up from the current directory, like .gitignore lookup.
 pub fn is_allowed(package: &str, ecosystem: &str) -> bool {
     find_ignore_file()
@@ -14,7 +14,7 @@ pub fn is_allowed(package: &str, ecosystem: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Add a package to .motionstream-ignore in the current directory.
+/// Add a package to .primer-ignore in the current directory.
 pub fn add(package: &str, ecosystem: Option<&str>) -> Result<()> {
     let path = PathBuf::from(IGNORE_FILE);
     let entry = match ecosystem {

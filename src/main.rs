@@ -14,7 +14,7 @@ use clap::{Parser, Subcommand, ValueEnum};
 use engine::osv;
 
 #[derive(Parser)]
-#[command(name = "motionstream", about = "Pre-install security interceptor for package managers")]
+#[command(name = "primer", about = "Pre-install security interceptor for package managers")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -62,7 +62,7 @@ enum Commands {
         #[arg(long, value_name = "FILE")]
         file: Option<String>,
     },
-    /// Add a package to the project allow-list (.motionstream-ignore)
+    /// Add a package to the project allow-list (.primer-ignore)
     Allow {
         /// Package name to allow
         package: String,
@@ -171,7 +171,7 @@ async fn main() -> Result<()> {
                 let _ = (from, tokenizer, repo, file);
                 eprintln!(
                     "AI features are not compiled in.\n\
-                     Rebuild with:  cargo install motionstream --features ai"
+                     Rebuild with:  cargo install primer --features ai"
                 );
             }
         }
@@ -204,7 +204,7 @@ async fn main() -> Result<()> {
 // ---------------------------------------------------------------------------
 
 fn show_ai_summary(vulns: &[osv::Vulnerability]) {
-    if std::env::var("MOTIONSTREAM_AI").map(|v| v == "0").unwrap_or(false) {
+    if std::env::var("PRIMER_AI").map(|v| v == "0").unwrap_or(false) {
         return;
     }
 
@@ -212,7 +212,7 @@ fn show_ai_summary(vulns: &[osv::Vulnerability]) {
     {
         let _ = vulns;
         eprintln!(
-            "  ℹ  --ai requires the AI feature: cargo install motionstream --features ai"
+            "  ℹ  --ai requires the AI feature: cargo install primer --features ai"
         );
         return;
     }
@@ -220,7 +220,7 @@ fn show_ai_summary(vulns: &[osv::Vulnerability]) {
     #[cfg(feature = "ai")]
     {
         if !summary::model_present() {
-            eprintln!("  ℹ  No model found. Run: motionstream update-models");
+            eprintln!("  ℹ  No model found. Run: primer update-models");
             return;
         }
 

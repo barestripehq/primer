@@ -94,25 +94,25 @@ pub(crate) async fn query_inner(
 
     if let Some(vulns) = crate::cache::get_from_dir(cache_dir, package, ecosystem, version, now) {
         if verbose {
-            eprintln!("motionstream: cache hit — {} ({})", package, ecosystem);
+            eprintln!("primer: cache hit — {} ({})", package, ecosystem);
         }
         return Ok(vulns);
     }
 
     if verbose {
-        eprintln!("motionstream: fetching {} ({}) from OSV", package, ecosystem);
+        eprintln!("primer: fetching {} ({}) from OSV", package, ecosystem);
     }
 
     match query_with_base(base_url, package, ecosystem, version).await {
         Ok(vulns) => {
             if let Err(e) = crate::cache::put_to_dir(cache_dir, package, ecosystem, version, &vulns, now) {
-                eprintln!("motionstream: cache write failed: {}", e);
+                eprintln!("primer: cache write failed: {}", e);
             }
             Ok(vulns)
         }
         Err(e) => {
             if let Some(vulns) = crate::cache::get_stale_from_dir(cache_dir, package, ecosystem, version) {
-                eprintln!("⚠  motionstream: OSV unreachable ({}), using stale cache for {}", e, package);
+                eprintln!("⚠  primer: OSV unreachable ({}), using stale cache for {}", e, package);
                 return Ok(vulns);
             }
             Err(e)
@@ -373,7 +373,7 @@ mod tests {
     #[tokio::test]
     #[ignore = "hits live OSV API — run with: cargo test -- --ignored"]
     async fn live_nonexistent_package_returns_empty() {
-        let vulns = query("zzz-nonexistent-pkg-motionstream", "PyPI", None, false).await.unwrap();
+        let vulns = query("zzz-nonexistent-pkg-primer", "PyPI", None, false).await.unwrap();
         assert!(vulns.is_empty());
     }
 }

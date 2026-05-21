@@ -1930,27 +1930,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "motionstream"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "candle-core",
- "candle-transformers",
- "clap",
- "colored 2.2.0",
- "hf-hub",
- "inquire",
- "mockito",
- "reqwest 0.12.28",
- "serde",
- "serde_json",
- "tempfile",
- "tokenizers",
- "tokio",
- "toml",
-]
-
-[[package]]
 name = "native-tls"
 version = "0.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2280,6 +2259,27 @@ checksum = "479ca8adacdd7ce8f1fb39ce9ecccbfe93a3f1344b3d0d97f20bc0196208f62b"
 dependencies = [
  "proc-macro2",
  "syn",
+]
+
+[[package]]
+name = "primer"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "candle-core",
+ "candle-transformers",
+ "clap",
+ "colored 2.2.0",
+ "hf-hub",
+ "inquire",
+ "mockito",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokenizers",
+ "tokio",
+ "toml",
 ]
 
 [[package]]
