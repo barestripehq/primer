@@ -1,3 +1,4 @@
+#[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 use std::process::Command;
@@ -24,7 +25,8 @@ pub fn install() -> Result<()> {
     std::fs::write(&hook_path, HOOK_SCRIPT)
         .with_context(|| format!("Failed to write hook to {}", hook_path.display()))?;
 
-    // Make executable (owner rwx, group rx, other rx)
+    // Make executable (Unix only — Git on Windows handles this via core.fileMode)
+    #[cfg(unix)]
     std::fs::set_permissions(&hook_path, std::fs::Permissions::from_mode(0o755))
         .with_context(|| format!("Failed to set executable bit on {}", hook_path.display()))?;
 
