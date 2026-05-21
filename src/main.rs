@@ -214,7 +214,6 @@ fn show_ai_summary(vulns: &[osv::Vulnerability]) {
         eprintln!(
             "  ℹ  --ai requires the AI feature: cargo install primer --features ai"
         );
-        return;
     }
 
     #[cfg(feature = "ai")]

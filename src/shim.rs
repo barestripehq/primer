@@ -131,7 +131,7 @@ fn parse_package_spec(pm: &PackageManager, spec: &str) -> PackageArg {
         PackageManager::Pip | PackageManager::Uv | PackageManager::Poetry => {
             // spec formats: requests, requests==2.28.0, requests>=2.0, requests[security]
             let name_end = spec
-                .find(|c: char| c == '=' || c == '>' || c == '<' || c == '!' || c == '[')
+                .find(['=', '>', '<', '!', '['])
                 .unwrap_or(spec.len());
             let name = spec[..name_end].trim().to_owned();
             let version = spec

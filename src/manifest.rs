@@ -58,11 +58,9 @@ fn split_requirement(s: &str) -> (&str, Option<&str>) {
     let mut split_at = s.len();
     let mut op_len = 0;
     for op in ops {
-        if let Some(pos) = s.find(op) {
-            if pos < split_at {
-                split_at = pos;
-                op_len = op.len();
-            }
+        if let Some(pos) = s.find(op) && pos < split_at {
+            split_at = pos;
+            op_len = op.len();
         }
     }
     if split_at == s.len() {

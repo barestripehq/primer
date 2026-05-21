@@ -49,7 +49,7 @@ pub fn clear() -> Result<usize> {
     let mut count = 0;
     for entry in std::fs::read_dir(&dir)? {
         let path = entry?.path();
-        if path.extension().map_or(false, |e| e == "json") {
+        if path.extension().is_some_and(|e| e == "json") {
             std::fs::remove_file(path)?;
             count += 1;
         }
@@ -165,7 +165,7 @@ mod tests {
         let mut count = 0;
         for entry in std::fs::read_dir(dir.path()).unwrap() {
             let path = entry.unwrap().path();
-            if path.extension().map_or(false, |e| e == "json") {
+            if path.extension().is_some_and(|e| e == "json") {
                 std::fs::remove_file(path).unwrap();
                 count += 1;
             }
