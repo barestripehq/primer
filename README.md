@@ -1,280 +1,164 @@
----
-title: Motionstream
-emoji: 🚀
-colorFrom: pink
-colorTo: red
-sdk: gradio
-sdk_version: 5.34.0
-app_file: app.py
-pinned: false
----
+# motionstream
 
-# MotionStream
+Pre-install security interceptor for package managers. Scans packages against the [OSV vulnerability database](https://osv.dev/) before they hit your system — with an optional local AI summary, git hook integration, and CI mode.
 
-**AI-Powered Python Package Security Scanner**
+## How it works
 
-MotionStream is a proof-of-concept security scanner that uses artificial intelligence to analyze Python package dependencies for vulnerabilities, malicious packages, and security risks. It leverages the OSV (Open Source Vulnerabilities) database and advanced AI agents to provide comprehensive security analysis.
-
-## ✨ Features
-
-- 🚀 **Batch Vulnerability Scanning** - Efficiently scans multiple packages using OSV's batch API
-- 🤖 **AI-Powered Analysis** - Uses Hugging Face AI agents for intelligent security assessment
-- 📊 **Multiple Output Formats** - Console, JSON, and HTML reports
-- 📋 **Multi-Format Support** - Works with `requirements.txt` and `environment.yml` files
-- ⚡ **Fast Performance** - 10-20x faster than individual package scanning
-- 🛡️ **Comprehensive Reporting** - Detailed vulnerability analysis with remediation recommendations
-
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-# Install directly from GitHub
-pip install git+https://github.com/callezenwaka/motionstream.git
-
-# Or clone and install in development mode
-git clone https://github.com/callezenwaka/motionstream.git
-cd motionstream
-pip install -e .
-```
-
-### Setup
-
-1. Get a Hugging Face token from [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens)
-2. Set your environment variable:
-```bash
-export HF_TOKEN='huggingface_token'
-```
-
-### Basic Usage
-
-```bash
-# Scan a requirements.txt file
-motionstream scan requirements-test.txt
-
-# Scan a conda environment file
-motionstream scan environment.yml
-
-# Generate JSON report
-motionstream scan requirements-test.txt --output json
-
-# Generate HTML report
-motionstream scan requirements-test.txt --output html
-
-# Or with custom model
-motionstream scan requirements-test.txt
-motionstream scan environment.yml --output json
-motionstream scan requirements-test.txt --output html
-motionstream scan requirements-test.txt --model "model-id"
-motionstream scan requirements-test.txt --model "model-id" --output json
-```
-
-## 📖 Usage Guide
-
-### Command Line Interface
+motionstream places lightweight shims ahead of your package managers in `$PATH`. When you run `pip install requests`, the shim intercepts the command, queries OSV, and either passes through silently (clean result) or prompts you before executing.
 
 ```
-usage: motionstream [-h] [--output {console,json,html}] {scan} file_path
-
-🔒 MotionStream - AI-Powered Python Security Scanner
-
-positional arguments:
-  {scan}                Command to execute
-  file_path            Path to requirements.txt or environment.yml
-
-optional arguments:
-  -h, --help           show this help message and exit
-  --output {console,json,html}
-                       Output format (default: console)
+pip install pillow
+  → motionstream shim intercepts
+  → queries OSV
+  → found 3 vulnerabilities (1 CRITICAL, 2 HIGH)
+  → [prompt] View full details? (y/N)
+  → [prompt] Continue install anyway? (y/N)
+  → exits 1 on "N"
 ```
 
-### Supported File Formats
+No vulnerability found — the install runs with no output and no delay (after the first cached query).
 
-#### requirements.txt
-```txt
-requests==2.25.1
-django>=3.0.0
-flask~=2.0.0
-numpy
+## Supported ecosystems
+
+| Ecosystem | Intercepted commands |
+|-----------|---------------------|
+| Python    | `pip`, `uv`, `poetry` |
+| Node.js   | `npm`, `yarn`, `pnpm` |
+| Go        | `go get`, `go mod` |
+| Rust      | `cargo add` |
+
+## Installation
+
+```sh
+curl --proto '=https' --tlsv1.2 -fsSL https://github.com/callezenwaka/motionstream/releases/latest/download/motionstream-installer.sh | sh
 ```
 
-#### environment.yml
-```yaml
-name: myproject
-dependencies:
-  - python=3.9
-  - requests=2.25.1
-  - pip:
-    - django==3.2.0
-    - flask>=2.0.0
+Then run once to set up shims:
+
+```sh
+motionstream init
 ```
 
-## 🖥️ Output Examples
+This creates shims in `~/.motionstream/bin` and prepends it to your shell config (`.zshenv` for zsh, `.bashrc` for bash, fish function for fish). Restart your shell or `source` the config file.
 
-### Console Output
-![Output](output.png)
-```
-✓ Security analysis completed
+**From source:**
 
-🔒 MotionStream Security Report
-----------------------------------------
-📦 Scanned 3 packages:
-  ✓ requests 2.32.4
-  ✓ pandas None
-  𐄂 browser-use 0.1.44 - High vulnerabilities found
-
-🔍 Security Issue Found:
-
-⚠ HIGH: browser-use current has file access vulnerabilities
-  Impact: package
-  Fix: pip install browser-use>=latest
-
-📊 Summary: 1 vulnerability found (0 Critical, 1 High)
-🎯 Recommendation: Update vulnerable packages immediately
-
-✅ Scan completed successfully!
+```sh
+cargo install --git https://github.com/callezenwaka/motionstream
+motionstream init
 ```
 
-### JSON Output
-```json
-{
-  "scan_timestamp": "2025-01-11T10:30:00",
-  "dependencies_scanned": 15,
-  "vulnerabilities_found": 3,
-  "summary": {
-    "critical": 0,
-    "high": 1,
-    "medium": 2,
-    "low": 0
-  },
-  "dependencies": [...],
-  "vulnerabilities": [...],
-  "agent_analysis": "..."
-}
+## Commands
+
+### Scanning
+
+```sh
+# Scan any package manually
+motionstream scan requests --ecosystem pypi
+motionstream scan express --ecosystem npm
+motionstream scan github.com/gin-gonic/gin --ecosystem go
+motionstream scan serde --ecosystem cargo
+
+# Pin a version
+motionstream scan pillow --ecosystem pypi --version 9.0.0
+
+# Skip prompts (proceed regardless)
+motionstream scan pillow --ecosystem pypi --force
+
+# Show cache hit/miss
+motionstream scan requests --ecosystem pypi --verbose
+
+# Include AI-generated summary (requires update-models)
+motionstream scan pillow --ecosystem pypi --ai
 ```
 
-## 🛠️ Development
+### Setup and teardown
 
-### Requirements
-- Python 3.8+
-- Hugging Face account and API token
-- Internet connection for OSV and PyPI APIs
-
-### Dependencies
-```
-smolagents>=0.1.0
-requests>=2.28.0
-pyyaml>=6.0
-packaging>=21.0
-huggingface-hub>=0.16.0
+```sh
+motionstream init           # create shims, update PATH
+motionstream uninit         # remove shims, strip PATH entry
+motionstream uninit --purge # also delete cache and model files
+motionstream doctor         # check PATH order, shim health, cache state, model state
 ```
 
-### Running Tests
-```bash
-# Test the package scanner directly
-python -c "
-from src.tools.package_scan import PackageScanTool
-scanner = PackageScanTool()
-result = scanner.forward([{'name': 'requests', 'version': '2.25.1'}])
-print(f'Found {len(result)} vulnerabilities')
-"
+### Allow-list
+
+Add a package to `.motionstream-ignore` in the project root to skip the scan without `--force`:
+
+```sh
+motionstream allow pillow
+motionstream allow pillow --ecosystem pypi   # scope to one ecosystem
 ```
 
-## 🔍 How It Works
+### Cache
 
-1. **Parse Dependencies** - Extracts package names and versions from dependency files
-2. **Batch Vulnerability Scan** - Uses OSV's `/v1/querybatch` API for efficient scanning
-3. **AI Analysis** - Processes scan results through specialized AI agent
-4. **Risk Assessment** - Evaluates severity, impact, and provides recommendations
-5. **Report Generation** - Formats results in user-specified format
-
-## 🚨 Security Considerations
-
-- **API Keys** - Keep your Hugging Face token secure
-- **Network Requests** - Tool makes external API calls to OSV and PyPI
-- **False Positives** - Always verify vulnerability reports manually
-- **Rate Limits** - Respects API rate limits automatically
-
-## 📝 Examples
-
-### Generate HTML Report
-```bash
-motionstream scan requirements-test.txt --output html
-# Creates: security_report_YYYYMMDD_HHMMSS.html
+```sh
+motionstream cache clear    # remove all cached OSV results
 ```
 
-### Scan Conda Environment
-```bash
-# Export your current environment
-conda env export > environment.yml
+Results are cached in `~/.motionstream/cache/` with a 24-hour TTL. On network failure the most recent cached result is used (stale-on-error fallback).
 
-# Scan it
-motionstream scan environment.yml
+### AI summary
+
+```sh
+# Download the default model (~80 MB, no account required)
+motionstream update-models
+
+# Use a local GGUF file
+motionstream update-models --from /path/to/model.gguf --tokenizer /path/to/tokenizer.json
+
+# Download a different model from HuggingFace Hub
+motionstream update-models --repo <hf-repo> --file <filename>
 ```
 
-## Run tests
+Once a model is present, pass `--ai` to any `scan` command or shim invocation to get a plain-English CVE summary before the decision prompt.
 
-```bash
-# Run all tests
-pytest
+Set `MOTIONSTREAM_AI=0` to disable AI entirely (useful in CI pipelines).
 
-# Run specific test file
-pytest tests/test_parser.py -v
+### Git hook
 
-# Run with coverage
-pip install pytest-cov
-pytest --cov=src tests/
+Block commits that add vulnerable packages to manifests:
+
+```sh
+# Install the pre-commit hook in the current repo
+motionstream hook install
+
+# Run the check manually without committing
+motionstream hook check
 ```
 
-## 🗺️ Roadmap
+Monitored manifests: `requirements.txt`, `package.json`, `go.mod`, `Cargo.toml`.
 
-### GitHub App Integration
-Transform MotionStream from a CLI tool into an automated CI/CD security gate:
+## CI / non-interactive mode
 
-- [ ] **FastAPI webhook server** - Listen for GitHub push/PR events
-- [ ] **GitHub Check Runs** - Display scan results directly in PR UI
-- [ ] **Differential scanning** - Only scan dependencies changed in a PR
-- [ ] **Auto-fix PRs** - Automatically open PRs to update vulnerable packages
+When `CI=true` is set (standard on GitHub Actions, CircleCI, etc.) or stdin is not a TTY, motionstream switches to non-interactive mode automatically:
 
-### Multi-Language Support
-Extend scanning beyond Python using OSV's multi-ecosystem API:
+- No prompts
+- Blocks on Critical and High findings (exit code `1`)
+- Writes all findings to `motionstream-report.json` in the working directory
 
-| Language | Dependency File | Status |
-|----------|-----------------|--------|
-| Python | `requirements.txt`, `environment.yml` | ✅ Supported |
-| JavaScript | `package.json`, `package-lock.json` | 🔜 Planned |
-| Go | `go.mod` | 🔜 Planned |
-| Rust | `Cargo.toml` | 🔜 Planned |
-| Ruby | `Gemfile` | 🔜 Planned |
-| Java | `pom.xml`, `build.gradle` | 🔜 Planned |
+Override with `MOTIONSTREAM_CI_MODE=allow-all` to disable blocking (audit-only pipelines).
 
-### AI Enhancements
-- [ ] Language-specific security personas (e.g., prototype pollution for npm, memory safety for Rust)
-- [ ] Reachability analysis for transitive dependencies
-- [ ] Custom severity scoring based on project context
+## Diagnostics
 
-## 🤝 Contributing
+```sh
+motionstream doctor
+```
 
-This is a proof-of-concept project. For improvements:
+Reports:
+- Whether `~/.motionstream/bin` is correctly ordered ahead of version managers (`nvm`, `pyenv`, `asdf`, `volta`) in `$PATH`
+- Resolved path of each shim and its real binary
+- Cache entry count and total size
+- Active AI model path and file size
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+## Uninstall
 
-## 📄 License
+```sh
+motionstream uninit --purge
+```
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Removes shims, strips the `$PATH` entry from your shell config, and deletes `~/.motionstream/` (cache, models, config).
 
-## 🙏 Acknowledgments
+## License
 
-- [OSV (Open Source Vulnerabilities)](https://osv.dev/) - Vulnerability database
-- [Hugging Face](https://huggingface.co/) - AI model hosting
-- [smolagents](https://github.com/huggingface/smolagents) - AI agent framework
-
-## ⚠️ Disclaimer
-
-MotionStream is a proof-of-concept tool for educational and research purposes. While it uses reliable vulnerability databases and AI analysis, always verify security findings manually and use additional security tools in production environments.
-
----
+MIT
