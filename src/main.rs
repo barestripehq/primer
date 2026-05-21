@@ -3,6 +3,7 @@ mod cache;
 mod cli;
 mod config;
 mod engine;
+mod manifest;
 mod summary;
 mod prompt;
 mod report;
@@ -79,6 +80,19 @@ enum Commands {
     },
     /// Check PATH order, shim health, cache, and model state
     Doctor,
+    /// Manage git hook integration
+    Hook {
+        #[command(subcommand)]
+        command: HookCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum HookCommands {
+    /// Write .git/hooks/pre-commit to block vulnerable package additions
+    Install,
+    /// Diff staged manifest changes and scan newly added packages (also called by the hook itself)
+    Check,
 }
 
 #[derive(Subcommand)]
@@ -178,6 +192,8 @@ async fn main() -> Result<()> {
         Commands::Init => cli::init::run()?,
         Commands::Uninit { purge } => cli::uninit::run(purge)?,
         Commands::Doctor => cli::doctor::run()?,
+        Commands::Hook { command: HookCommands::Install } => cli::hook::install()?,
+        Commands::Hook { command: HookCommands::Check } => cli::hook::check().await?,
     }
 
     Ok(())
