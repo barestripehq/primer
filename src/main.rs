@@ -1,7 +1,9 @@
 mod allowlist;
 mod cache;
 mod cli;
+mod config;
 mod engine;
+mod summary;
 mod prompt;
 mod report;
 mod shim;
@@ -35,11 +37,29 @@ enum Commands {
         /// Print cache hit/miss and fetch source
         #[arg(long)]
         verbose: bool,
+        /// Generate an AI summary of findings using the local model
+        #[arg(long)]
+        ai: bool,
     },
     /// Manage the local vulnerability cache
     Cache {
         #[command(subcommand)]
         command: CacheCommands,
+    },
+    /// Download or register the AI summary model
+    UpdateModels {
+        /// Use a local GGUF file instead of downloading (skips network)
+        #[arg(long, value_name = "PATH")]
+        from: Option<std::path::PathBuf>,
+        /// Tokenizer to pair with --from
+        #[arg(long, value_name = "PATH")]
+        tokenizer: Option<std::path::PathBuf>,
+        /// HuggingFace repo to download from (use with --file)
+        #[arg(long, value_name = "REPO")]
+        repo: Option<String>,
+        /// Filename within the HF repo
+        #[arg(long, value_name = "FILE")]
+        file: Option<String>,
     },
     /// Add a package to the project allow-list (.motionstream-ignore)
     Allow {
@@ -102,7 +122,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Scan { package, ecosystem, version, force, verbose } => {
+        Commands::Scan { package, ecosystem, version, force, verbose, ai } => {
             let eco = ecosystem.as_osv_str();
             println!("Scanning {} ({}) ...", package, eco);
 
@@ -111,6 +131,10 @@ async fn main() -> Result<()> {
                     println!("✓ No vulnerabilities found.");
                 }
                 Ok(vulns) => {
+                    // Show AI summary when requested, before the decision prompt.
+                    if ai {
+                        show_ai_summary(&vulns);
+                    }
                     match prompt::evaluate(&package, eco, &vulns, force) {
                         prompt::Decision::Abort => std::process::exit(1),
                         prompt::Decision::Proceed => {}
@@ -119,6 +143,22 @@ async fn main() -> Result<()> {
                 Err(e) => {
                     eprintln!("⚠ Scan skipped: {} (proceeding)", e);
                 }
+            }
+        }
+
+        Commands::UpdateModels { from, tokenizer, repo, file } => {
+            #[cfg(feature = "ai")]
+            {
+                let opts = summary::download::DownloadOptions { from, tokenizer, repo, file };
+                summary::download::run(opts).await?;
+            }
+            #[cfg(not(feature = "ai"))]
+            {
+                let _ = (from, tokenizer, repo, file);
+                eprintln!(
+                    "AI features are not compiled in.\n\
+                     Rebuild with:  cargo install motionstream --features ai"
+                );
             }
         }
 
@@ -141,4 +181,44 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// AI summary display
+// ---------------------------------------------------------------------------
+
+fn show_ai_summary(vulns: &[osv::Vulnerability]) {
+    if std::env::var("MOTIONSTREAM_AI").map(|v| v == "0").unwrap_or(false) {
+        return;
+    }
+
+    #[cfg(not(feature = "ai"))]
+    {
+        let _ = vulns;
+        eprintln!(
+            "  ℹ  --ai requires the AI feature: cargo install motionstream --features ai"
+        );
+        return;
+    }
+
+    #[cfg(feature = "ai")]
+    {
+        if !summary::model_present() {
+            eprintln!("  ℹ  No model found. Run: motionstream update-models");
+            return;
+        }
+
+        eprint!("  Generating summary … ");
+        match summary::generate(vulns) {
+            Some(s) => {
+                eprintln!();
+                eprintln!();
+                eprintln!("  Summary");
+                eprintln!("  ───────");
+                eprintln!("  {}", s.text);
+                eprintln!();
+            }
+            None => eprintln!("(unavailable)"),
+        }
+    }
 }

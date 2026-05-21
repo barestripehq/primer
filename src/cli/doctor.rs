@@ -117,22 +117,39 @@ fn check_cache(ms_bin: &Path) {
 // Model
 // ---------------------------------------------------------------------------
 
-fn check_model(ms_bin: &Path) {
+fn check_model(_ms_bin: &Path) {
     println!("AI model");
     println!("--------");
 
-    let model_path = ms_bin.parent().unwrap().join("models").join("advisor.gguf");
+    let (model_path, tokenizer_path) = crate::summary::active_paths();
 
+    // Model file
     if model_path.exists() {
         let size = std::fs::metadata(&model_path).map(|m| m.len()).unwrap_or(0);
         println!(
-            "  ✓ {} ({:.1} MB)",
+            "  ✓ model     {} ({:.1} MB)",
             model_path.display(),
             size as f64 / (1024.0 * 1024.0)
         );
     } else {
-        println!("  · Model not downloaded — run `motionstream update-models` to enable AI summaries");
+        println!("  ✗ model     not found — run `motionstream update-models`");
+        println!("             expected: {}", model_path.display());
     }
+
+    // Tokenizer file
+    if tokenizer_path.exists() {
+        let size = std::fs::metadata(&tokenizer_path).map(|m| m.len()).unwrap_or(0);
+        println!(
+            "  ✓ tokenizer {} ({:.1} KB)",
+            tokenizer_path.display(),
+            size as f64 / 1024.0
+        );
+    } else {
+        println!("  ✗ tokenizer not found — run `motionstream update-models`");
+    }
+
+    #[cfg(not(feature = "ai"))]
+    println!("  ℹ  AI inference not compiled in — rebuild with: cargo build --features ai");
 }
 
 // ---------------------------------------------------------------------------
