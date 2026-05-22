@@ -52,7 +52,7 @@ inherits = "release"
 lto = "thin"
 
 [workspace.metadata.dist]
-cargo-dist-version = "0.22.1"
+cargo-dist-version = "0.32.0"
 ci = ["github"]
 installers = ["shell", "powershell"]
 targets = [
