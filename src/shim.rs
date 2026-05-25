@@ -549,7 +549,7 @@ pub async fn run(pm: PackageManager, args: Vec<String>) -> Result<()> {
                     }
                 }
                 Ok(_) => {
-                    eprintln!("  {} {}: no vulnerabilities found.", "✓".green(), pkg.name);
+                    eprintln!("  {} {}: found 0 vulnerabilities.", "✓".green(), pkg.name);
                 }
                 Err(e) => eprintln!("⚠  primer: scan skipped ({}) — proceeding", e),
             }

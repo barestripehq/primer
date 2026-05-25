@@ -19,7 +19,7 @@ pip install pillow
   → exits 1 on "N"
 ```
 
-No vulnerability found — the install runs with no output and no delay (after the first cached query).
+✓ requests: found 0 vulnerabilities — passes through silently (after the first cached query).
 
 ## Supported ecosystems
 
@@ -117,6 +117,40 @@ primer scan --file package.json --direct-only
 
 # Globally (writes to ~/.primer/config.toml)
 primer config set direct-only true
+```
+
+### Directory watcher
+
+Auto-scan manifest files whenever they change — useful for long-running dev sessions:
+
+```sh
+primer watch                        # watch current directory
+primer watch --directory /project   # watch a specific path
+primer watch --scan                 # also scan immediately on startup
+```
+
+Watches: `requirements.txt`, `pyproject.toml`, `package.json`, `go.mod`, `Cargo.toml`. Debounced at 500 ms. Exit with `Ctrl+C`.
+
+### Severity threshold
+
+Control which severity level triggers a prompt or CI block:
+
+```sh
+primer config set prompt-threshold medium   # block MEDIUM, HIGH, CRITICAL
+primer config set prompt-threshold critical # block CRITICAL only
+primer config set prompt-threshold high     # default
+```
+
+### SBOM generation
+
+Emit a Software Bill of Materials for any manifest or lockfile:
+
+```sh
+primer sbom --file requirements.txt              # CycloneDX JSON to stdout
+primer sbom --file package-lock.json             # from lockfile (exact versions)
+primer sbom --file Cargo.toml --output sbom.json # write to file
+primer sbom --file package.json --format spdx    # SPDX 2.3 JSON
+primer sbom --file go.mod --no-scan              # inventory only, no OSV queries
 ```
 
 ### Setup and teardown

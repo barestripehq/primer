@@ -2,4 +2,6 @@ pub mod doctor;
 pub mod hook;
 pub mod init;
 pub mod model;
+pub mod sbom;
 pub mod uninit;
+pub mod watch;

@@ -145,6 +145,16 @@ fn check_config() {
         println!("  · intercept-restore = false");
         println!("    run `primer config set intercept-restore true` to enable manifest scanning");
     }
+
+    let threshold = cfg.prompt_threshold.as_deref().unwrap_or("high");
+    println!("  · prompt-threshold  = {}", threshold);
+    if threshold == "high" {
+        println!("    CRITICAL and HIGH findings block installs (default)");
+    } else {
+        println!(
+            "    run `primer config set prompt-threshold high` to restore default blocking"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------

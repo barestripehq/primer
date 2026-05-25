@@ -32,6 +32,7 @@ anyhow = "1"
 inquire = "0.9"
 colored = "3"
 toml = "1"
+notify = { version = "6", features = ["macos_fsevent"] }
 
 # AI summary layer — only compiled with --features ai
 candle-core         = { version = "0.10", optional = true }

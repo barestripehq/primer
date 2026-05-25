@@ -98,6 +98,30 @@ enum Commands {
         #[command(subcommand)]
         command: HookCommands,
     },
+    /// Watch manifest files and auto-scan on change
+    Watch {
+        /// Directory to watch (default: current)
+        #[arg(long, value_name = "PATH")]
+        directory: Option<std::path::PathBuf>,
+        /// Scan existing manifests immediately on startup
+        #[arg(long)]
+        scan: bool,
+    },
+    /// Generate a Software Bill of Materials (CycloneDX or SPDX)
+    Sbom {
+        /// Manifest or lockfile to generate SBOM from
+        #[arg(long, value_name = "PATH")]
+        file: std::path::PathBuf,
+        /// Write output to file instead of stdout
+        #[arg(long, value_name = "PATH")]
+        output: Option<std::path::PathBuf>,
+        /// Output format: cyclonedx (default) or spdx
+        #[arg(long, default_value = "cyclonedx")]
+        format: String,
+        /// Skip OSV vulnerability enrichment (inventory only)
+        #[arg(long)]
+        no_scan: bool,
+    },
     /// Remove shims and PATH entries
     Uninit {
         /// Also delete cache and model files
@@ -333,7 +357,7 @@ async fn main() -> Result<()> {
 
                 match osv::query(&package, eco, version.as_deref(), verbose).await {
                     Ok(vulns) if vulns.is_empty() => {
-                        println!("✓ No vulnerabilities found.");
+                        println!("✓ {}: found 0 vulnerabilities.", package);
                     }
                     Ok(vulns) => {
                         if ai {
@@ -352,6 +376,7 @@ async fn main() -> Result<()> {
         }
 
         Commands::Init => cli::init::run()?,
+        Commands::Watch { directory, scan } => cli::watch::run(directory, scan).await?,
         Commands::Info | Commands::Doctor => cli::doctor::run()?,
 
         // ── Management ───────────────────────────────────────────────────────
@@ -407,6 +432,13 @@ async fn main() -> Result<()> {
             HookCommands::Install => cli::hook::install()?,
             HookCommands::Check => cli::hook::check().await?,
         },
+
+        Commands::Sbom {
+            file,
+            output,
+            format,
+            no_scan,
+        } => cli::sbom::run(file, output, &format, no_scan).await?,
 
         Commands::Uninit { purge } => cli::uninit::run(purge)?,
 

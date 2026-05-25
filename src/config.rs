@@ -32,6 +32,10 @@ pub struct Config {
     /// declared packages are scanned (overrides the default transitive-on behaviour).
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub direct_only: bool,
+    /// Minimum severity that triggers a prompt or CI block.
+    /// Values: "critical", "high" (default), "medium", "low".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt_threshold: Option<String>,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq)]
@@ -86,6 +90,7 @@ const VALID_KEYS: &[&str] = &[
     "ai.tokenizer",
     "intercept-restore",
     "direct-only",
+    "prompt-threshold",
 ];
 
 pub fn get(key: &str) -> Result<Option<String>> {
@@ -100,6 +105,10 @@ pub(crate) fn get_from(path: &Path, key: &str) -> Result<Option<String>> {
         "ai.tokenizer" => cfg.ai.tokenizer.map(|p| p.to_string_lossy().into_owned()),
         "intercept-restore" => Some(cfg.intercept_restore.to_string()),
         "direct-only" => Some(cfg.direct_only.to_string()),
+        "prompt-threshold" => Some(
+            cfg.prompt_threshold
+                .unwrap_or_else(|| "high".to_string()),
+        ),
         _ => bail!(
             "unknown config key '{}'. Valid keys: {}",
             key,
@@ -133,6 +142,12 @@ pub(crate) fn set_to(path: &Path, key: &str, value: &str) -> Result<()> {
             "true" | "1" | "yes" => cfg.direct_only = true,
             "false" | "0" | "no" => cfg.direct_only = false,
             _ => bail!("direct-only must be 'true' or 'false'"),
+        },
+        "prompt-threshold" => match value {
+            "critical" | "high" | "medium" | "low" => {
+                cfg.prompt_threshold = Some(value.to_string());
+            }
+            _ => bail!("prompt-threshold must be one of: critical, high, medium, low"),
         },
         _ => bail!(
             "unknown config key '{}'. Valid keys: {}",
@@ -171,6 +186,10 @@ pub fn list() -> Result<()> {
     );
     println!("  intercept-restore = {}", cfg.intercept_restore);
     println!("  direct-only       = {}", cfg.direct_only);
+    println!(
+        "  prompt-threshold  = {}",
+        cfg.prompt_threshold.as_deref().unwrap_or("high (default)")
+    );
     Ok(())
 }
 
@@ -380,5 +399,56 @@ mod tests {
         set_to(&path, "direct-only", "true").unwrap();
         let contents = std::fs::read_to_string(&path).unwrap();
         assert!(contents.contains("direct_only = true"));
+    }
+
+    // --- prompt-threshold ---
+
+    #[test]
+    fn prompt_threshold_defaults_to_none() {
+        let cfg = Config::default();
+        assert!(cfg.prompt_threshold.is_none());
+    }
+
+    #[test]
+    fn set_prompt_threshold_medium_roundtrips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        set_to(&path, "prompt-threshold", "medium").unwrap();
+        let v = get_from(&path, "prompt-threshold").unwrap();
+        assert_eq!(v.as_deref(), Some("medium"));
+    }
+
+    #[test]
+    fn set_prompt_threshold_critical_roundtrips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        set_to(&path, "prompt-threshold", "critical").unwrap();
+        let cfg = load_from(&path).unwrap();
+        assert_eq!(cfg.prompt_threshold.as_deref(), Some("critical"));
+    }
+
+    #[test]
+    fn set_prompt_threshold_invalid_errors() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        assert!(set_to(&path, "prompt-threshold", "extreme").is_err());
+    }
+
+    #[test]
+    fn prompt_threshold_not_written_when_none() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let cfg = Config::default();
+        save_to(&path, &cfg).unwrap();
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert!(!contents.contains("prompt_threshold"));
+    }
+
+    #[test]
+    fn get_prompt_threshold_returns_high_default_when_unset() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let v = get_from(&path, "prompt-threshold").unwrap();
+        assert_eq!(v.as_deref(), Some("high"));
     }
 }

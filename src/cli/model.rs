@@ -375,6 +375,7 @@ mod tests {
             },
             intercept_restore: false,
             direct_only: false,
+            prompt_threshold: None,
         }
     }
 

@@ -37,8 +37,25 @@ pub fn force_flag() -> bool {
 // Severity helpers
 // ---------------------------------------------------------------------------
 
+/// Returns the effective threshold string from config, defaulting to "high".
+pub fn effective_threshold() -> String {
+    crate::config::load()
+        .unwrap_or_default()
+        .prompt_threshold
+        .unwrap_or_else(|| "high".to_string())
+}
+
+fn is_blocking_at(label: &str, threshold: &str) -> bool {
+    match threshold {
+        "critical" => matches!(label, "CRITICAL"),
+        "medium" => matches!(label, "CRITICAL" | "HIGH" | "MEDIUM"),
+        "low" => matches!(label, "CRITICAL" | "HIGH" | "MEDIUM" | "LOW"),
+        _ => matches!(label, "CRITICAL" | "HIGH"), // "high" + unknown → default
+    }
+}
+
 fn is_blocking(label: &str) -> bool {
-    matches!(label, "CRITICAL" | "HIGH")
+    is_blocking_at(label, &effective_threshold())
 }
 
 fn color_severity(label: &str) -> colored::ColoredString {
@@ -65,6 +82,7 @@ pub fn evaluate(package: &str, ecosystem: &str, vulns: &[Vulnerability], force: 
         force || force_flag(),
         is_ci(),
         ci_allow_all(),
+        &effective_threshold(),
     )
 }
 
@@ -76,6 +94,7 @@ pub(crate) fn evaluate_inner(
     force: bool,
     ci: bool,
     allow_all: bool,
+    threshold: &str,
 ) -> Decision {
     if vulns.is_empty() {
         return Decision::Proceed;
@@ -83,7 +102,7 @@ pub(crate) fn evaluate_inner(
 
     let blocking: Vec<&Vulnerability> = vulns
         .iter()
-        .filter(|v| is_blocking(v.severity_label()))
+        .filter(|v| is_blocking_at(v.severity_label(), threshold))
         .collect();
 
     if force {
@@ -357,7 +376,7 @@ mod tests {
     fn ci_allow_all_proceeds() {
         let vulns = vec![vuln("GHSA-0001", "CRITICAL")];
         assert_eq!(
-            evaluate_inner("pkg", "PyPI", &vulns, false, true, true),
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, true, "high"),
             Decision::Proceed
         );
     }
@@ -366,7 +385,7 @@ mod tests {
     fn ci_blocks_on_critical() {
         let vulns = vec![vuln("GHSA-0001", "CRITICAL")];
         assert_eq!(
-            evaluate_inner("pkg", "PyPI", &vulns, false, true, false),
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, false, "high"),
             Decision::Abort
         );
     }
@@ -375,7 +394,7 @@ mod tests {
     fn ci_proceeds_on_low_only() {
         let vulns = vec![vuln("GHSA-0001", "LOW")];
         assert_eq!(
-            evaluate_inner("pkg", "PyPI", &vulns, false, true, false),
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, false, "high"),
             Decision::Proceed
         );
     }
@@ -384,17 +403,65 @@ mod tests {
     fn ci_proceeds_on_medium_only() {
         let vulns = vec![vuln("GHSA-0001", "MEDIUM")];
         assert_eq!(
-            evaluate_inner("pkg", "PyPI", &vulns, false, true, false),
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, false, "high"),
             Decision::Proceed
         );
     }
 
     #[test]
-    fn is_blocking_for_critical_and_high() {
-        assert!(is_blocking("CRITICAL"));
-        assert!(is_blocking("HIGH"));
-        assert!(!is_blocking("MEDIUM"));
-        assert!(!is_blocking("LOW"));
-        assert!(!is_blocking("UNKNOWN"));
+    fn threshold_medium_blocks_medium() {
+        let vulns = vec![vuln("GHSA-0001", "MEDIUM")];
+        assert_eq!(
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, false, "medium"),
+            Decision::Abort
+        );
+    }
+
+    #[test]
+    fn threshold_critical_passes_high() {
+        let vulns = vec![vuln("GHSA-0001", "HIGH")];
+        assert_eq!(
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, false, "critical"),
+            Decision::Proceed
+        );
+    }
+
+    #[test]
+    fn threshold_low_blocks_low() {
+        let vulns = vec![vuln("GHSA-0001", "LOW")];
+        assert_eq!(
+            evaluate_inner("pkg", "PyPI", &vulns, false, true, false, "low"),
+            Decision::Abort
+        );
+    }
+
+    #[test]
+    fn is_blocking_at_high_threshold() {
+        assert!(is_blocking_at("CRITICAL", "high"));
+        assert!(is_blocking_at("HIGH", "high"));
+        assert!(!is_blocking_at("MEDIUM", "high"));
+        assert!(!is_blocking_at("LOW", "high"));
+        assert!(!is_blocking_at("UNKNOWN", "high"));
+    }
+
+    #[test]
+    fn is_blocking_at_critical_threshold() {
+        assert!(is_blocking_at("CRITICAL", "critical"));
+        assert!(!is_blocking_at("HIGH", "critical"));
+        assert!(!is_blocking_at("MEDIUM", "critical"));
+    }
+
+    #[test]
+    fn is_blocking_at_medium_threshold() {
+        assert!(is_blocking_at("CRITICAL", "medium"));
+        assert!(is_blocking_at("HIGH", "medium"));
+        assert!(is_blocking_at("MEDIUM", "medium"));
+        assert!(!is_blocking_at("LOW", "medium"));
+    }
+
+    #[test]
+    fn is_blocking_at_low_threshold() {
+        assert!(is_blocking_at("LOW", "low"));
+        assert!(is_blocking_at("MEDIUM", "low"));
     }
 }
