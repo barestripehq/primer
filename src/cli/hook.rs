@@ -12,9 +12,10 @@ use crate::prompt;
 
 // The hook script delegates all logic back to `primer hook check`.
 const HOOK_SCRIPT: &str = "#!/bin/sh
-# Rust projects: enforce formatting before commit
+# Rust projects: enforce formatting and lints before commit
 if [ -f Cargo.toml ]; then
   cargo fmt --check || exit 1
+  cargo clippy -- -D warnings || exit 1
 fi
 exec primer hook check
 ";

@@ -64,18 +64,18 @@ pub(crate) fn stats_for_dir(dir: &Path) -> Result<()> {
 
     for entry in std::fs::read_dir(dir)? {
         let path = entry?.path();
-        if !path.extension().is_some_and(|e| e == "json") {
+        if path.extension().is_none_or(|e| e != "json") {
             continue;
         }
         let meta = std::fs::metadata(&path)?;
         total_bytes += meta.len();
         count += 1;
 
-        if let Ok(contents) = std::fs::read_to_string(&path) {
-            if let Ok(ce) = serde_json::from_str::<CacheEntry>(&contents) {
-                oldest = Some(oldest.map_or(ce.fetched_at, |o: u64| o.min(ce.fetched_at)));
-                newest = Some(newest.map_or(ce.fetched_at, |n: u64| n.max(ce.fetched_at)));
-            }
+        if let Ok(contents) = std::fs::read_to_string(&path)
+            && let Ok(ce) = serde_json::from_str::<CacheEntry>(&contents)
+        {
+            oldest = Some(oldest.map_or(ce.fetched_at, |o: u64| o.min(ce.fetched_at)));
+            newest = Some(newest.map_or(ce.fetched_at, |n: u64| n.max(ce.fetched_at)));
         }
     }
 
