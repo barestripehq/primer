@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-const OSV_API: &str = "https://api.osv.dev/v1/query";
+const OSV_API_BASE: &str = "https://api.osv.dev/v1";
 
 #[derive(Debug, Serialize)]
 struct OsvRequest<'a> {
@@ -76,7 +76,7 @@ pub async fn query(
     verbose: bool,
 ) -> Result<Vec<Vulnerability>> {
     query_inner(
-        OSV_API,
+        OSV_API_BASE,
         &crate::cache::cache_dir(),
         package,
         ecosystem,
