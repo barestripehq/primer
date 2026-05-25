@@ -24,6 +24,10 @@ pub fn config_path() -> PathBuf {
 pub struct Config {
     #[serde(default)]
     pub ai: AiConfig,
+    /// When true, bare restore commands (npm install, pip install, go mod download)
+    /// are intercepted and scanned before the real binary runs.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub intercept_restore: bool,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq)]
@@ -72,7 +76,12 @@ pub(crate) fn save_to(path: &Path, cfg: &Config) -> Result<()> {
 // ---------------------------------------------------------------------------
 
 /// Supported dot-separated config keys.
-const VALID_KEYS: &[&str] = &["ai.backend", "ai.model", "ai.tokenizer"];
+const VALID_KEYS: &[&str] = &[
+    "ai.backend",
+    "ai.model",
+    "ai.tokenizer",
+    "intercept-restore",
+];
 
 pub fn get(key: &str) -> Result<Option<String>> {
     get_from(&config_path(), key)
@@ -84,6 +93,7 @@ pub(crate) fn get_from(path: &Path, key: &str) -> Result<Option<String>> {
         "ai.backend" => cfg.ai.backend.clone(),
         "ai.model" => cfg.ai.model.map(|p| p.to_string_lossy().into_owned()),
         "ai.tokenizer" => cfg.ai.tokenizer.map(|p| p.to_string_lossy().into_owned()),
+        "intercept-restore" => Some(cfg.intercept_restore.to_string()),
         _ => bail!(
             "unknown config key '{}'. Valid keys: {}",
             key,
@@ -108,6 +118,11 @@ pub(crate) fn set_to(path: &Path, key: &str, value: &str) -> Result<()> {
         }
         "ai.model" => cfg.ai.model = Some(PathBuf::from(value)),
         "ai.tokenizer" => cfg.ai.tokenizer = Some(PathBuf::from(value)),
+        "intercept-restore" => match value {
+            "true" | "1" | "yes" => cfg.intercept_restore = true,
+            "false" | "0" | "no" => cfg.intercept_restore = false,
+            _ => bail!("intercept-restore must be 'true' or 'false'"),
+        },
         _ => bail!(
             "unknown config key '{}'. Valid keys: {}",
             key,
@@ -124,11 +139,11 @@ pub fn list() -> Result<()> {
     let path = config_path();
     println!("Config: {}\n", path.display());
     println!(
-        "  ai.backend   = {}",
+        "  ai.backend        = {}",
         cfg.ai.backend.as_deref().unwrap_or("(not set)")
     );
     println!(
-        "  ai.model     = {}",
+        "  ai.model          = {}",
         cfg.ai
             .model
             .as_ref()
@@ -136,13 +151,14 @@ pub fn list() -> Result<()> {
             .unwrap_or_else(|| "(not set)".into())
     );
     println!(
-        "  ai.tokenizer = {}",
+        "  ai.tokenizer      = {}",
         cfg.ai
             .tokenizer
             .as_ref()
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_else(|| "(not set)".into())
     );
+    println!("  intercept-restore = {}", cfg.intercept_restore);
     Ok(())
 }
 
@@ -250,5 +266,61 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("config.toml");
         assert!(set_to(&path, "ai.unknown", "value").is_err());
+    }
+
+    // --- intercept-restore ---
+
+    #[test]
+    fn intercept_restore_defaults_to_false() {
+        let cfg = Config::default();
+        assert!(!cfg.intercept_restore);
+    }
+
+    #[test]
+    fn set_intercept_restore_true_roundtrips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        set_to(&path, "intercept-restore", "true").unwrap();
+        let v = get_from(&path, "intercept-restore").unwrap();
+        assert_eq!(v.as_deref(), Some("true"));
+    }
+
+    #[test]
+    fn set_intercept_restore_false_roundtrips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        set_to(&path, "intercept-restore", "true").unwrap();
+        set_to(&path, "intercept-restore", "false").unwrap();
+        let cfg = load_from(&path).unwrap();
+        assert!(!cfg.intercept_restore);
+    }
+
+    #[test]
+    fn set_intercept_restore_invalid_errors() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        assert!(set_to(&path, "intercept-restore", "maybe").is_err());
+    }
+
+    #[test]
+    fn intercept_restore_not_written_when_false() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let cfg = Config::default();
+        save_to(&path, &cfg).unwrap();
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert!(
+            !contents.contains("intercept_restore"),
+            "false default should not appear in TOML"
+        );
+    }
+
+    #[test]
+    fn intercept_restore_written_when_true() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        set_to(&path, "intercept-restore", "true").unwrap();
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert!(contents.contains("intercept_restore = true"));
     }
 }

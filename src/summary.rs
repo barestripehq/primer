@@ -86,6 +86,7 @@ mod tests {
             summary: Some("test".into()),
             cvss_vector: None,
             severity: Some("HIGH".into()),
+            fixed_version: None,
         }];
         // Without a real model file this must return None, not panic.
         assert!(generate(&vulns).is_none());

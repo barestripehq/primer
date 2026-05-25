@@ -41,12 +41,16 @@ enum Commands {
     // ── Common ───────────────────────────────────────────────────────────────
     /// Scan a package for known vulnerabilities
     Scan {
-        /// Package name to scan
-        package: String,
-        /// Package ecosystem
-        #[arg(long, value_enum, default_value = "pypi")]
-        ecosystem: Ecosystem,
-        /// Specific version to check (defaults to latest)
+        /// Package name to scan (omit when using --file)
+        #[arg(required_unless_present = "file")]
+        package: Option<String>,
+        /// Scan all packages declared in a manifest file
+        #[arg(long, value_name = "PATH", conflicts_with = "package")]
+        file: Option<std::path::PathBuf>,
+        /// Package ecosystem (inferred from --file when omitted)
+        #[arg(long, value_enum)]
+        ecosystem: Option<Ecosystem>,
+        /// Specific version to check (single-package scan only)
         #[arg(long)]
         version: Option<String>,
         /// Proceed regardless of findings
@@ -177,6 +181,14 @@ enum ModelCommands {
         /// Local GGUF path, or 'ollama:<model>' for Ollama backend
         target: String,
     },
+    /// Remove one or more models (interactive if no names given)
+    Remove {
+        /// Model filename(s) or ollama:<name> targets to remove; omit for interactive select
+        names: Vec<String>,
+        /// Remove all managed models without prompting
+        #[arg(long)]
+        all: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -225,30 +237,88 @@ async fn main() -> Result<()> {
         // ── Common ───────────────────────────────────────────────────────────
         Commands::Scan {
             package,
+            file,
             ecosystem,
             version,
             force,
             verbose,
             ai,
         } => {
-            let eco = ecosystem.as_osv_str();
-            println!("Scanning {} ({}) ...", package, eco);
+            if let Some(path) = file {
+                // --- manifest file scan ---
+                let filename = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or_default();
+                let eco = ecosystem
+                    .as_ref()
+                    .map(|e| e.as_osv_str())
+                    .or_else(|| manifest::ecosystem_from_filename(filename))
+                    .unwrap_or_else(|| {
+                        eprintln!(
+                            "⚠ Could not infer ecosystem from filename '{}'. Use --ecosystem.",
+                            filename
+                        );
+                        std::process::exit(1);
+                    });
+                let content = std::fs::read_to_string(&path).unwrap_or_else(|e| {
+                    eprintln!("⚠ Could not read {}: {}", path.display(), e);
+                    std::process::exit(1);
+                });
+                let packages = manifest::parse_file(filename, &content);
+                if packages.is_empty() {
+                    println!("No packages found in {}.", path.display());
+                } else {
+                    println!(
+                        "Scanning {} ({}) — {} packages …",
+                        filename,
+                        eco,
+                        packages.len()
+                    );
+                    let mut any_blocked = false;
+                    for pkg in &packages {
+                        match osv::query(&pkg.name, eco, pkg.version.as_deref(), verbose).await {
+                            Ok(vulns) if vulns.is_empty() => {}
+                            Ok(vulns) => {
+                                if ai {
+                                    show_ai_summary(&vulns);
+                                }
+                                if let prompt::Decision::Abort =
+                                    prompt::evaluate(&pkg.name, eco, &vulns, force)
+                                {
+                                    any_blocked = true;
+                                }
+                            }
+                            Err(e) => eprintln!("  ⚠ {} scan skipped: {}", pkg.name, e),
+                        }
+                    }
+                    if any_blocked {
+                        std::process::exit(1);
+                    }
+                    println!("✓ Scan complete.");
+                }
+            } else {
+                // --- single-package scan ---
+                let package = package.expect("package is required without --file");
+                let eco = ecosystem.as_ref().map(|e| e.as_osv_str()).unwrap_or("PyPI");
+                println!("Scanning {} ({}) ...", package, eco);
 
-            match osv::query(&package, eco, version.as_deref(), verbose).await {
-                Ok(vulns) if vulns.is_empty() => {
-                    println!("✓ No vulnerabilities found.");
-                }
-                Ok(vulns) => {
-                    if ai {
-                        show_ai_summary(&vulns);
+                match osv::query(&package, eco, version.as_deref(), verbose).await {
+                    Ok(vulns) if vulns.is_empty() => {
+                        println!("✓ No vulnerabilities found.");
                     }
-                    match prompt::evaluate(&package, eco, &vulns, force) {
-                        prompt::Decision::Abort => std::process::exit(1),
-                        prompt::Decision::Proceed => {}
+                    Ok(vulns) => {
+                        if ai {
+                            show_ai_summary(&vulns);
+                        }
+                        match prompt::evaluate(&package, eco, &vulns, force) {
+                            prompt::Decision::Abort => std::process::exit(1),
+                            prompt::Decision::Proceed => {}
+                        }
                     }
-                }
-                Err(e) => {
-                    eprintln!("⚠ Scan skipped: {} (proceeding)", e);
+                    Err(e) => {
+                        eprintln!("⚠ Scan skipped: {} (proceeding)", e);
+                    }
                 }
             }
         }
@@ -302,6 +372,7 @@ async fn main() -> Result<()> {
             }
             ModelCommands::List => cli::model::list()?,
             ModelCommands::Set { target } => cli::model::set(&target)?,
+            ModelCommands::Remove { names, all } => cli::model::remove(names, all)?,
         },
 
         Commands::Hook { command } => match command {

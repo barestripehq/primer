@@ -105,7 +105,7 @@ pub(crate) fn evaluate_inner(
         return ci_decision_inner(package, ecosystem, vulns, &blocking, allow_all);
     }
 
-    interactive_decision(package, vulns, &blocking)
+    interactive_decision(package, ecosystem, vulns, &blocking)
 }
 
 // ---------------------------------------------------------------------------
@@ -156,8 +156,19 @@ fn ci_decision_inner(
 // Interactive mode
 // ---------------------------------------------------------------------------
 
+fn pm_install_hint(ecosystem: &str) -> &'static str {
+    match ecosystem {
+        "PyPI" => "pip install",
+        "npm" => "npm install",
+        "Go" => "go get",
+        "crates.io" => "cargo add",
+        _ => "install",
+    }
+}
+
 fn interactive_decision(
     package: &str,
+    ecosystem: &str,
     vulns: &[Vulnerability],
     blocking: &[&Vulnerability],
 ) -> Decision {
@@ -229,9 +240,9 @@ fn interactive_decision(
         Decision::Proceed
     } else {
         eprintln!(
-            "  Aborted. To bypass: {} {} install {}",
+            "  Aborted. To bypass: {} {} {}",
             "PRIMER_FORCE=1".dimmed(),
-            package,
+            pm_install_hint(ecosystem),
             package,
         );
         Decision::Abort
@@ -252,6 +263,9 @@ fn print_findings(package: &str, vulns: &[Vulnerability]) {
         if let Some(cv) = &v.cvss_vector {
             eprintln!("       CVSS: {}", cv.dimmed());
         }
+        if let Some(fv) = &v.fixed_version {
+            eprintln!("       Fixed in: {}", fv.green());
+        }
         eprintln!();
     }
 }
@@ -271,6 +285,7 @@ mod tests {
             summary: Some(format!("Test vuln {}", id)),
             cvss_vector: None,
             severity: Some(severity.to_owned()),
+            fixed_version: None,
         }
     }
 

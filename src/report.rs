@@ -76,6 +76,7 @@ mod tests {
             summary: Some("test".into()),
             cvss_vector: None,
             severity: Some(severity.to_owned()),
+            fixed_version: None,
         }
     }
 

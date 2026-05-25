@@ -317,12 +317,14 @@
       <div><span class="step">  → primer shim intercepts</span></div>
       <div><span class="step">  → queries OSV vulnerability database</span></div>
       <div><span class="bad">  → found 3 vulnerabilities (1 CRITICAL, 2 HIGH)</span></div>
+      <div><span class="bad">    pillow 9.0.0 — GHSA-56pw-mpj4-fxjw [CRITICAL]</span></div>
+      <div><span class="step">    Fixed in: 9.0.1</span></div>
       <div><span class="step">  → [prompt] View full details? (y/N)</span></div>
       <div><span class="step">  → [prompt] Continue install anyway? (y/N)</span></div>
       <div><span class="bad">  → exits 1 on "N"</span></div>
       <br>
       <div><span class="cmd">$ pip install requests</span></div>
-      <div><span class="ok">  → no vulnerabilities found — passes through silently</span></div>
+      <div><span class="ok">  ✓ requests: no vulnerabilities found — passes through silently</span></div>
     </div>
   </section>
 
@@ -452,6 +454,19 @@ primer scan pillow --ecosystem pypi --ai</div>
         </div>
       </div>
 
+      <div class="step-block">
+        <div class="step-header">
+          <span># 6. Optional: scan on bare restore (npm install, go mod download, …)</span>
+          <button type="button" class="copy-btn" onclick="copyStep(this)" aria-label="Copy command">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span class="sr-only">Copy command</span>
+          </button>
+        </div>
+        <div class="step-cmd">
+          <div data-copy="primer config set intercept-restore true">primer config set intercept-restore true</div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -473,7 +488,11 @@ primer scan pillow --ecosystem pypi --ai</div>
       <tbody>
         <tr>
           <td><code>primer scan &lt;pkg&gt; --ecosystem &lt;eco&gt;</code></td>
-          <td>Scan a package for known vulnerabilities. Flags: <code>--version</code>, <code>--force</code>, <code>--verbose</code>, <code>--ai</code></td>
+          <td>Scan a package for known vulnerabilities. Shows "Fixed in:" when OSV provides a patched version. Flags: <code>--version</code>, <code>--force</code>, <code>--verbose</code>, <code>--ai</code></td>
+        </tr>
+        <tr>
+          <td><code>primer scan --file &lt;path&gt;</code></td>
+          <td>Scan all packages declared in a manifest file without installing. Supports <code>requirements.txt</code>, <code>pyproject.toml</code>, <code>package.json</code>, <code>go.mod</code>, <code>Cargo.toml</code></td>
         </tr>
         <tr>
           <td><code>primer init</code></td>
@@ -517,7 +536,7 @@ primer scan pillow --ecosystem pypi --ai</div>
         </tr>
         <tr>
           <td><code>primer config set &lt;key&gt; &lt;value&gt;</code></td>
-          <td>Write a value to <code>~/.primer/config.toml</code>. Keys: <code>ai.backend</code>, <code>ai.model</code>, <code>ai.tokenizer</code></td>
+          <td>Write a value to <code>~/.primer/config.toml</code>. Keys: <code>ai.backend</code>, <code>ai.model</code>, <code>ai.tokenizer</code>, <code>intercept-restore</code></td>
         </tr>
         <tr>
           <td><code>primer config get &lt;key&gt;</code></td>
@@ -546,6 +565,18 @@ primer scan pillow --ecosystem pypi --ai</div>
         <tr>
           <td><code>primer model set &lt;target&gt;</code></td>
           <td>Set the active inference target. Local: <code>/path/to/model.gguf</code>. Ollama: <code>ollama:llama3.2</code></td>
+        </tr>
+        <tr>
+          <td><code>primer model remove</code></td>
+          <td>Interactive select list of all managed models — choose one or "Remove all"</td>
+        </tr>
+        <tr>
+          <td><code>primer model remove &lt;name&gt;...</code></td>
+          <td>Remove one or more named models without a prompt. Names: filename (<code>smollm2.gguf</code>) or Ollama target (<code>ollama:llama3.2</code>)</td>
+        </tr>
+        <tr>
+          <td><code>primer model remove --all</code></td>
+          <td>Remove all managed model files and clear config (non-interactive)</td>
         </tr>
         <tr>
           <td><code>primer hook install</code></td>
@@ -594,7 +625,7 @@ primer scan pillow --ecosystem pypi --ai</div>
         </tr>
         <tr>
           <td>Rust</td>
-          <td><code>cargo add</code></td>
+          <td><code>cargo add</code>, <code>cargo build</code>, <code>cargo fetch</code>, <code>cargo check</code></td>
         </tr>
       </tbody>
     </table>

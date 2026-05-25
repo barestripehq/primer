@@ -29,6 +29,8 @@ struct OsvVuln {
     #[serde(default)]
     severity: Vec<OsvSeverity>,
     database_specific: Option<OsvDbSpecific>,
+    #[serde(default)]
+    affected: Vec<OsvAffected>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,6 +45,23 @@ struct OsvDbSpecific {
     severity: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct OsvAffected {
+    #[serde(default)]
+    ranges: Vec<OsvRange>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OsvRange {
+    #[serde(default)]
+    events: Vec<OsvEvent>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OsvEvent {
+    fixed: Option<String>,
+}
+
 /// A normalised vulnerability returned to callers.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Vulnerability {
@@ -51,6 +70,9 @@ pub struct Vulnerability {
     pub cvss_vector: Option<String>,
     /// Plain-text severity from database_specific (e.g. "CRITICAL", "HIGH").
     pub severity: Option<String>,
+    /// First fixed version found in affected[].ranges[].events, if any.
+    #[serde(default)]
+    pub fixed_version: Option<String>,
 }
 
 impl Vulnerability {
@@ -166,15 +188,24 @@ pub async fn query_with_base(
     let vulns = resp
         .vulns
         .into_iter()
-        .map(|v| Vulnerability {
-            id: v.id,
-            summary: v.summary,
-            cvss_vector: v
-                .severity
-                .into_iter()
-                .find(|s| s.kind.starts_with("CVSS"))
-                .map(|s| s.score),
-            severity: v.database_specific.and_then(|d| d.severity),
+        .map(|v| {
+            let fixed_version = v
+                .affected
+                .iter()
+                .flat_map(|a| a.ranges.iter())
+                .flat_map(|r| r.events.iter())
+                .find_map(|e| e.fixed.clone());
+            Vulnerability {
+                id: v.id,
+                summary: v.summary,
+                cvss_vector: v
+                    .severity
+                    .into_iter()
+                    .find(|s| s.kind.starts_with("CVSS"))
+                    .map(|s| s.score),
+                severity: v.database_specific.and_then(|d| d.severity),
+                fixed_version,
+            }
         })
         .collect();
 
@@ -192,6 +223,7 @@ mod tests {
             summary: Some("Test vulnerability".into()),
             cvss_vector: None,
             severity: severity.map(str::to_owned),
+            fixed_version: None,
         }
     }
 
@@ -324,6 +356,62 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn extracts_fixed_version_from_affected_ranges() {
+        let mut server = Server::new_async().await;
+        let body = r#"{
+            "vulns": [{
+                "id": "GHSA-fixed-0001",
+                "summary": "Test",
+                "severity": [],
+                "database_specific": {"severity": "HIGH"},
+                "affected": [{
+                    "ranges": [{
+                        "type": "ECOSYSTEM",
+                        "events": [
+                            {"introduced": "0"},
+                            {"fixed": "9.1.0"}
+                        ]
+                    }]
+                }]
+            }]
+        }"#;
+        let mock = server
+            .mock("POST", "/query")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(body)
+            .create_async()
+            .await;
+
+        let vulns = query_with_base(&server.url(), "test-pkg", "PyPI", None)
+            .await
+            .unwrap();
+        mock.assert_async().await;
+
+        assert_eq!(vulns[0].fixed_version.as_deref(), Some("9.1.0"));
+    }
+
+    #[tokio::test]
+    async fn fixed_version_is_none_when_not_present() {
+        let mut server = Server::new_async().await;
+        let body = r#"{"vulns":[{"id":"GHSA-no-fix","summary":null,"severity":[],"database_specific":{"severity":"HIGH"}}]}"#;
+        let mock = server
+            .mock("POST", "/query")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(body)
+            .create_async()
+            .await;
+
+        let vulns = query_with_base(&server.url(), "test-pkg", "PyPI", None)
+            .await
+            .unwrap();
+        mock.assert_async().await;
+
+        assert!(vulns[0].fixed_version.is_none());
+    }
+
+    #[tokio::test]
     async fn returns_err_on_network_failure() {
         // Point at a port nothing is listening on.
         let result = query_with_base("http://127.0.0.1:1", "requests", "PyPI", None).await;
@@ -340,6 +428,7 @@ mod tests {
             summary: None,
             cvss_vector: None,
             severity: Some("HIGH".into()),
+            fixed_version: None,
         }];
         crate::cache::put_to_dir(dir.path(), "requests", "PyPI", None, &cached, 1000).unwrap();
 
@@ -367,6 +456,7 @@ mod tests {
             summary: None,
             cvss_vector: None,
             severity: Some("CRITICAL".into()),
+            fixed_version: None,
         }];
         // Write with timestamp=0 so entry is expired (age >> TTL).
         crate::cache::put_to_dir(dir.path(), "requests", "PyPI", None, &stale, 0).unwrap();

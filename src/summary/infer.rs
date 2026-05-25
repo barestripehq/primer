@@ -159,6 +159,7 @@ mod tests {
             summary: Some(summary.to_owned()),
             cvss_vector: None,
             severity: Some(severity.to_owned()),
+            fixed_version: None,
         }
     }
 

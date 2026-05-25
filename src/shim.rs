@@ -3,6 +3,7 @@ use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Result, bail};
+use colored::Colorize;
 
 use crate::engine::osv;
 
@@ -208,6 +209,143 @@ pub fn exec_real_binary(binary: &Path, args: &[String]) -> anyhow::Error {
 }
 
 // ---------------------------------------------------------------------------
+// Bare-restore detection
+// ---------------------------------------------------------------------------
+
+/// True when the trailing args contain no explicit package names (only flags or
+/// manifest file arguments).
+fn has_no_pkg_args(rest: &[String]) -> bool {
+    !rest.iter().any(|a| {
+        !a.starts_with('-')
+            && !a.ends_with(".txt")
+            && !a.ends_with(".toml")
+            && !a.ends_with(".json")
+    })
+}
+
+/// Returns the primary manifest filename to scan when `args` describe a bare
+/// restore command (install-all-deps-from-lockfile, no explicit packages).
+/// Returns `None` for commands that should pass through unchanged.
+pub fn is_bare_restore(pm: &PackageManager, args: &[String]) -> Option<&'static str> {
+    let subcommand = args.first().map(String::as_str).unwrap_or("");
+
+    match pm {
+        PackageManager::Pip => {
+            if subcommand != "install" {
+                return None;
+            }
+            has_no_pkg_args(&args[1..]).then_some("requirements.txt")
+        }
+        PackageManager::Uv => {
+            if subcommand != "sync" && subcommand != "install" {
+                return None;
+            }
+            has_no_pkg_args(&args[1..]).then_some("requirements.txt")
+        }
+        // `poetry install` restores from pyproject.toml (unlike `poetry add`)
+        PackageManager::Poetry => {
+            if subcommand == "install" {
+                Some("pyproject.toml")
+            } else {
+                None
+            }
+        }
+        PackageManager::Npm => {
+            if !matches!(subcommand, "install" | "i") {
+                return None;
+            }
+            has_no_pkg_args(&args[1..]).then_some("package.json")
+        }
+        // bare `yarn` (no subcommand) or `yarn install` always installs from package.json
+        PackageManager::Yarn => {
+            if subcommand.is_empty() || subcommand == "install" {
+                Some("package.json")
+            } else {
+                None
+            }
+        }
+        PackageManager::Pnpm => {
+            if subcommand != "install" {
+                return None;
+            }
+            has_no_pkg_args(&args[1..]).then_some("package.json")
+        }
+        PackageManager::Go => {
+            if subcommand == "mod" && args.get(1).map(String::as_str) == Some("download") {
+                Some("go.mod")
+            } else {
+                None
+            }
+        }
+        // `cargo build` / `cargo fetch` / `cargo check` restore from Cargo.toml
+        PackageManager::Cargo => {
+            if matches!(subcommand, "build" | "fetch" | "check") {
+                Some("Cargo.toml")
+            } else {
+                None
+            }
+        }
+    }
+}
+
+/// Scan a manifest file found in the current directory.
+/// Silently skips if the file does not exist or is empty.
+async fn intercept_manifest(pm: &PackageManager, primary: &'static str) {
+    let (path, name): (std::path::PathBuf, &str) = {
+        let p = std::path::Path::new(primary);
+        if p.exists() {
+            (p.to_owned(), primary)
+        } else if primary == "requirements.txt" {
+            // Python fallback: requirements.txt → pyproject.toml
+            let fallback = std::path::Path::new("pyproject.toml");
+            if fallback.exists() {
+                (fallback.to_owned(), "pyproject.toml")
+            } else {
+                return;
+            }
+        } else {
+            return;
+        }
+    };
+
+    let content = match std::fs::read_to_string(&path) {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+
+    let packages = crate::manifest::parse_file(name, &content);
+    if packages.is_empty() {
+        return;
+    }
+
+    eprintln!(
+        "  primer: scanning {} ({} packages listed)",
+        name,
+        packages.len()
+    );
+
+    let force = crate::prompt::force_flag();
+
+    for pkg in &packages {
+        if crate::allowlist::is_allowed(&pkg.name, pm.ecosystem()) {
+            continue;
+        }
+        match osv::query(&pkg.name, pm.ecosystem(), pkg.version.as_deref(), false).await {
+            Ok(vulns) if !vulns.is_empty() => {
+                match crate::prompt::evaluate(&pkg.name, pm.ecosystem(), &vulns, force) {
+                    crate::prompt::Decision::Abort => std::process::exit(1),
+                    crate::prompt::Decision::Proceed => {}
+                }
+            }
+            Ok(_) => {
+                eprintln!("  {} {}: no vulnerabilities found.", "✓".green(), pkg.name);
+            }
+            Err(e) => eprintln!("⚠  primer: scan skipped ({}) — proceeding", e),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Shim entry point
 // ---------------------------------------------------------------------------
 
@@ -231,9 +369,15 @@ pub async fn run(pm: PackageManager, args: Vec<String>) -> Result<()> {
                         crate::prompt::Decision::Proceed => {}
                     }
                 }
-                Ok(_) => {}
+                Ok(_) => {
+                    eprintln!("  {} {}: no vulnerabilities found.", "✓".green(), pkg.name);
+                }
                 Err(e) => eprintln!("⚠  primer: scan skipped ({}) — proceeding", e),
             }
+        }
+    } else if crate::config::load().unwrap_or_default().intercept_restore {
+        if let Some(manifest) = is_bare_restore(&pm, &args) {
+            intercept_manifest(&pm, manifest).await;
         }
     }
 
@@ -365,5 +509,167 @@ mod tests {
         assert_eq!(pkgs.len(), 2);
         assert_eq!(pkgs[0].name, "requests");
         assert_eq!(pkgs[1].name, "flask");
+    }
+
+    // --- is_bare_restore ---
+
+    #[test]
+    fn pip_bare_install_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Pip, &args("install")),
+            Some("requirements.txt")
+        );
+    }
+
+    #[test]
+    fn pip_install_with_package_not_bare_restore() {
+        assert!(is_bare_restore(&PackageManager::Pip, &args("install requests")).is_none());
+    }
+
+    #[test]
+    fn pip_install_flags_only_is_bare_restore() {
+        // `-q` is a flag, not a package
+        assert_eq!(
+            is_bare_restore(&PackageManager::Pip, &args("install -q")),
+            Some("requirements.txt")
+        );
+    }
+
+    #[test]
+    fn pip_list_not_bare_restore() {
+        assert!(is_bare_restore(&PackageManager::Pip, &args("list")).is_none());
+    }
+
+    #[test]
+    fn uv_sync_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Uv, &args("sync")),
+            Some("requirements.txt")
+        );
+    }
+
+    #[test]
+    fn uv_install_bare_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Uv, &args("install")),
+            Some("requirements.txt")
+        );
+    }
+
+    #[test]
+    fn poetry_install_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Poetry, &args("install")),
+            Some("pyproject.toml")
+        );
+    }
+
+    #[test]
+    fn poetry_add_not_bare_restore() {
+        assert!(is_bare_restore(&PackageManager::Poetry, &args("add requests")).is_none());
+    }
+
+    #[test]
+    fn npm_bare_install_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Npm, &args("install")),
+            Some("package.json")
+        );
+    }
+
+    #[test]
+    fn npm_i_bare_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Npm, &args("i")),
+            Some("package.json")
+        );
+    }
+
+    #[test]
+    fn npm_install_with_package_not_bare_restore() {
+        assert!(is_bare_restore(&PackageManager::Npm, &args("install lodash")).is_none());
+    }
+
+    #[test]
+    fn npm_run_not_bare_restore() {
+        assert!(is_bare_restore(&PackageManager::Npm, &args("run build")).is_none());
+    }
+
+    #[test]
+    fn yarn_bare_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Yarn, &[]),
+            Some("package.json")
+        );
+    }
+
+    #[test]
+    fn yarn_install_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Yarn, &args("install")),
+            Some("package.json")
+        );
+    }
+
+    #[test]
+    fn yarn_add_not_bare_restore() {
+        assert!(is_bare_restore(&PackageManager::Yarn, &args("add lodash")).is_none());
+    }
+
+    #[test]
+    fn pnpm_install_bare_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Pnpm, &args("install")),
+            Some("package.json")
+        );
+    }
+
+    #[test]
+    fn pnpm_add_not_bare_restore() {
+        assert!(is_bare_restore(&PackageManager::Pnpm, &args("add lodash")).is_none());
+    }
+
+    #[test]
+    fn go_mod_download_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Go, &args("mod download")),
+            Some("go.mod")
+        );
+    }
+
+    #[test]
+    fn go_get_not_bare_restore() {
+        assert!(
+            is_bare_restore(&PackageManager::Go, &args("get golang.org/x/net")).is_none()
+        );
+    }
+
+    #[test]
+    fn cargo_build_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Cargo, &args("build")),
+            Some("Cargo.toml")
+        );
+    }
+
+    #[test]
+    fn cargo_fetch_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Cargo, &args("fetch")),
+            Some("Cargo.toml")
+        );
+    }
+
+    #[test]
+    fn cargo_check_is_bare_restore() {
+        assert_eq!(
+            is_bare_restore(&PackageManager::Cargo, &args("check")),
+            Some("Cargo.toml")
+        );
+    }
+
+    #[test]
+    fn cargo_add_not_bare_restore() {
+        assert!(is_bare_restore(&PackageManager::Cargo, &args("add serde")).is_none());
     }
 }

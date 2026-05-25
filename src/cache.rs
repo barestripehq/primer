@@ -170,6 +170,7 @@ mod tests {
             summary: Some("test".into()),
             cvss_vector: None,
             severity: Some("HIGH".into()),
+            fixed_version: None,
         }
     }
 
@@ -286,6 +287,7 @@ mod tests {
             summary: Some("a summary".into()),
             cvss_vector: Some("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H".into()),
             severity: Some("CRITICAL".into()),
+            fixed_version: Some("2.1.0".into()),
         }];
         put_to_dir(dir.path(), "mypkg", "PyPI", Some("2.0"), &vulns, 500).unwrap();
         let got = get_from_dir(dir.path(), "mypkg", "PyPI", Some("2.0"), 501).unwrap();
@@ -295,5 +297,6 @@ mod tests {
             Some("CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H")
         );
         assert_eq!(got[0].severity_label(), "CRITICAL");
+        assert_eq!(got[0].fixed_version.as_deref(), Some("2.1.0"));
     }
 }

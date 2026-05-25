@@ -18,6 +18,8 @@ pub fn run() -> Result<()> {
     println!();
     check_cache(&ms_bin);
     println!();
+    check_config();
+    println!();
     check_model(&ms_bin);
 
     Ok(())
@@ -124,6 +126,25 @@ fn check_cache(ms_bin: &Path) {
         total_bytes as f64 / 1024.0,
         cache_dir.display()
     );
+}
+
+// ---------------------------------------------------------------------------
+// Config
+// ---------------------------------------------------------------------------
+
+fn check_config() {
+    println!("Config");
+    println!("------");
+
+    let cfg = crate::config::load().unwrap_or_default();
+
+    if cfg.intercept_restore {
+        println!("  ✓ intercept-restore = true");
+        println!("    bare restore commands (npm install, pip install, …) will be scanned");
+    } else {
+        println!("  · intercept-restore = false");
+        println!("    run `primer config set intercept-restore true` to enable manifest scanning");
+    }
 }
 
 // ---------------------------------------------------------------------------
