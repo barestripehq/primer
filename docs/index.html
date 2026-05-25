@@ -176,6 +176,31 @@
     .code-block .comment { color: #6b7280; }
     .code-block .cmd     { color: #34d399; }
 
+    /* ── Quick-start steps ── */
+    .steps { display: flex; flex-direction: column; gap: 10px; }
+
+    .step-block {
+      background: #111827;
+      border-radius: 10px;
+      padding: 14px 20px;
+      font-family: "SF Mono", "Fira Code", monospace;
+      font-size: 0.85rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+    }
+
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      color: #6b7280;
+      font-size: 0.8rem;
+    }
+
+    .step-cmd { color: #34d399; line-height: 1.8; }
+    .step-cmd div { white-space: pre; }
+
     /* ── Ecosystem table ── */
     table {
       width: 100%;
@@ -295,24 +320,61 @@
   <!-- Quick start -->
   <section>
     <h2>Quick start</h2>
-    <div class="code-block">
-      <div class="comment"># 1. Install</div>
-      <div><span class="cmd">curl --proto '=https' --tlsv1.2 -fsSL \</span></div>
-      <div>&nbsp;&nbsp;https://github.com/callezenwaka/primer/releases/latest/download/primer-installer.sh | sh</div>
-      <br>
-      <div class="comment"># 2. Set up shims</div>
-      <div><span class="cmd">primer init</span></div>
-      <br>
-      <div class="comment"># 3. Use your package manager as normal — primer intercepts automatically</div>
-      <div><span class="cmd">pip install requests</span></div>
-      <div><span class="cmd">npm install express</span></div>
-      <br>
-      <div class="comment"># 4. Optional: enable AI summaries</div>
-      <div><span class="cmd">primer update-models</span></div>
-      <div><span class="cmd">primer scan pillow --ecosystem pypi --ai</span></div>
-      <br>
-      <div class="comment"># 5. Optional: block vulnerable commits</div>
-      <div><span class="cmd">primer hook install</span></div>
+    <div class="steps">
+
+      <div class="step-block">
+        <div class="step-header">
+          <span># 1. Install</span>
+          <button type="button" class="copy-btn" onclick="copyStep(this)">copy</button>
+        </div>
+        <div class="step-cmd">
+          <div data-copy="curl --proto '=https' --tlsv1.2 -fsSL https://github.com/callezenwaka/primer/releases/latest/download/primer-installer.sh | sh">curl --proto '=https' --tlsv1.2 -fsSL \
+  https://github.com/callezenwaka/primer/releases/latest/download/primer-installer.sh | sh</div>
+        </div>
+      </div>
+
+      <div class="step-block">
+        <div class="step-header">
+          <span># 2. Set up shims</span>
+          <button type="button" class="copy-btn" onclick="copyStep(this)">copy</button>
+        </div>
+        <div class="step-cmd">
+          <div data-copy="primer init">primer init</div>
+        </div>
+      </div>
+
+      <div class="step-block">
+        <div class="step-header">
+          <span># 3. Use your package manager as normal — primer intercepts automatically</span>
+          <button type="button" class="copy-btn" onclick="copyStep(this)">copy</button>
+        </div>
+        <div class="step-cmd">
+          <div data-copy="pip install requests&#10;npm install express">pip install requests
+npm install express</div>
+        </div>
+      </div>
+
+      <div class="step-block">
+        <div class="step-header">
+          <span># 4. Optional: enable AI summaries</span>
+          <button type="button" class="copy-btn" onclick="copyStep(this)">copy</button>
+        </div>
+        <div class="step-cmd">
+          <div data-copy="primer update-models&#10;primer scan pillow --ecosystem pypi --ai">primer update-models
+primer scan pillow --ecosystem pypi --ai</div>
+        </div>
+      </div>
+
+      <div class="step-block">
+        <div class="step-header">
+          <span># 5. Optional: block vulnerable commits</span>
+          <button type="button" class="copy-btn" onclick="copyStep(this)">copy</button>
+        </div>
+        <div class="step-cmd">
+          <div data-copy="primer hook install">primer hook install</div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -364,6 +426,14 @@
       const text = document.getElementById('install-cmd').textContent;
       navigator.clipboard.writeText(text).then(() => {
         const btn = document.querySelector('.copy-btn');
+        btn.textContent = 'copied!';
+        setTimeout(() => btn.textContent = 'copy', 2000);
+      });
+    }
+
+    function copyStep(btn) {
+      const text = btn.closest('.step-block').querySelector('[data-copy]').dataset.copy;
+      navigator.clipboard.writeText(text).then(() => {
         btn.textContent = 'copied!';
         setTimeout(() => btn.textContent = 'copy', 2000);
       });
