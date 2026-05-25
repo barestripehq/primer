@@ -153,6 +153,34 @@ primer sbom --file package.json --format spdx    # SPDX 2.3 JSON
 primer sbom --file go.mod --no-scan              # inventory only, no OSV queries
 ```
 
+### AI agent integration (MCP)
+
+`primer mcp` starts a [Model Context Protocol](https://modelcontextprotocol.io) server over stdio, exposing a `scan_package` tool that any MCP-capable agent (Claude Code, Cursor, Cline, …) can call before deciding to install a package.
+
+Add a `.mcp.json` in your project root (or `~/.claude/mcp.json` for Claude Code):
+
+```json
+{
+  "mcpServers": {
+    "primer": {
+      "command": "primer",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+The agent can then call:
+
+```
+scan_package("pillow", "PyPI", "9.0.0")
+→ ⚠ pillow 9.0.0 (PyPI) — found 2 vulnerabilities:
+    [HIGH] GHSA-xxxx-yyyy-zzzz — Buffer overflow in TIFF decoder (Fixed in: 9.1.0)
+    [MEDIUM] GHSA-aaaa-bbbb-cccc — …
+```
+
+The tool returns structured JSON (`vulnerabilities[]`, `summary.blocking`) so the agent can decide whether to proceed. OSV cache applies — repeated lookups are instant.
+
 ### Setup and teardown
 
 ```sh

@@ -107,6 +107,8 @@ enum Commands {
         #[arg(long)]
         scan: bool,
     },
+    /// Start an MCP server over stdio for AI agent integration
+    Mcp,
     /// Generate a Software Bill of Materials (CycloneDX or SPDX)
     Sbom {
         /// Manifest or lockfile to generate SBOM from
@@ -432,6 +434,8 @@ async fn main() -> Result<()> {
             HookCommands::Install => cli::hook::install()?,
             HookCommands::Check => cli::hook::check().await?,
         },
+
+        Commands::Mcp => cli::mcp::run().await?,
 
         Commands::Sbom {
             file,

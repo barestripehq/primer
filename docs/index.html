@@ -397,6 +397,13 @@
         </h3>
         <p><code>primer sbom</code> emits a CycloneDX or SPDX Software Bill of Materials enriched with OSV vulnerability data.</p>
       </div>
+      <div class="card">
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          MCP Server
+        </h3>
+        <p><code>primer mcp</code> exposes a <code>scan_package</code> tool via the Model Context Protocol so AI coding agents (Claude Code, Cursor, Cline) can query vulnerability data before installing packages.</p>
+      </div>
     </div>
   </section>
 
@@ -614,6 +621,10 @@ primer scan pillow --ecosystem pypi --ai</div>
         <tr>
           <td><code>primer sbom --file &lt;path&gt;</code></td>
           <td>Emit a Software Bill of Materials. <code>--format cyclonedx</code> (default) or <code>--format spdx</code>. <code>--output &lt;file&gt;</code> writes to disk. <code>--no-scan</code> skips OSV enrichment</td>
+        </tr>
+        <tr>
+          <td><code>primer mcp</code></td>
+          <td>Start an MCP server over stdio. Add to <code>.mcp.json</code> so AI agents can call <code>scan_package</code> before installing packages</td>
         </tr>
         <tr>
           <td><code>primer completions &lt;shell&gt;</code></td>
