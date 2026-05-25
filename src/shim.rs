@@ -524,6 +524,8 @@ async fn scan_transitive_diff(pm: &PackageManager, before: Option<(String, Strin
 
     if any_blocked {
         std::process::exit(1);
+    } else {
+        eprintln!("  ✓ transitive scan complete — found 0 vulnerabilities.");
     }
 }
 

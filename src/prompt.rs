@@ -147,7 +147,7 @@ fn ci_decision_inner(
     }
 
     // Print findings to stderr for CI logs.
-    print_findings(package, vulns);
+    print_findings(package, ecosystem, vulns);
 
     if !blocking.is_empty() {
         // Write JSON report then block.
@@ -182,6 +182,16 @@ fn pm_install_hint(ecosystem: &str) -> &'static str {
         "Go" => "go get",
         "crates.io" => "cargo add",
         _ => "install",
+    }
+}
+
+fn fix_command(ecosystem: &str, package: &str, fixed_version: &str) -> String {
+    match ecosystem {
+        "PyPI" => format!("pip install \"{}>={}\"", package, fixed_version),
+        "npm" => format!("npm install {}@{}", package, fixed_version),
+        "Go" => format!("go get {}@v{}", package, fixed_version),
+        "crates.io" => format!("cargo update -p {} --precise {}", package, fixed_version),
+        _ => format!("install {}@{}", package, fixed_version),
     }
 }
 
@@ -226,7 +236,7 @@ fn interactive_decision(
 
     if show_details {
         eprintln!();
-        print_findings(package, vulns);
+        print_findings(package, ecosystem, vulns);
     }
 
     if blocking.is_empty() {
@@ -295,7 +305,7 @@ pub fn report_post_install(package: &str, ecosystem: &str, vulns: &[Vulnerabilit
         .filter(|v| is_blocking(v.severity_label()))
         .collect();
 
-    print_findings(package, vulns);
+    print_findings(package, ecosystem, vulns);
 
     if !blocking.is_empty() {
         eprintln!(
@@ -321,7 +331,7 @@ pub fn report_post_install(package: &str, ecosystem: &str, vulns: &[Vulnerabilit
 // Shared display
 // ---------------------------------------------------------------------------
 
-fn print_findings(package: &str, vulns: &[Vulnerability]) {
+fn print_findings(package: &str, ecosystem: &str, vulns: &[Vulnerability]) {
     eprintln!("  Security findings for {}:\n", package.bold());
     for v in vulns {
         eprintln!("  [{}] {}", color_severity(v.severity_label()), v.id.bold());
@@ -333,6 +343,10 @@ fn print_findings(package: &str, vulns: &[Vulnerability]) {
         }
         if let Some(fv) = &v.fixed_version {
             eprintln!("       Fixed in: {}", fv.green());
+            eprintln!(
+                "       Fix:      {}",
+                fix_command(ecosystem, package, fv).green().bold()
+            );
         }
         eprintln!();
     }

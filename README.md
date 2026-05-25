@@ -119,6 +119,37 @@ primer scan --file package.json --direct-only
 primer config set direct-only true
 ```
 
+The transitive scan always closes with a status line:
+
+```
+  primer: scanning 4 new transitive packages …
+  ✓ transitive scan complete — found 0 vulnerabilities.
+```
+
+### Auditing existing vulnerabilities
+
+The shim gates new installs. To surface vulnerabilities already in your project, scan the manifest or lockfile directly:
+
+```sh
+primer scan --file package-lock.json   # full resolved tree (recommended)
+primer scan --file package.json        # declared dependencies only
+primer scan --file requirements.txt
+primer scan --file Cargo.toml
+```
+
+For each vulnerable package, primer shows the CVE details and a ready-to-run fix command:
+
+```
+⚠ lodash 4.17.15 (npm) — 6 vulnerabilities
+
+  [HIGH]   GHSA-35jh-r3h4-6jhm — Command Injection
+           Fixed in: 4.17.21
+           Fix:      npm install lodash@4.17.21
+  …
+```
+
+Primer prints the fix command but does not modify your manifests — you run it, and the shim gates the new version on the way in.
+
 ### Directory watcher
 
 Auto-scan manifest files whenever they change — useful for long-running dev sessions:
