@@ -250,6 +250,22 @@
 
     tr:last-child td { border-bottom: none; }
 
+    /* ── CLI reference ── */
+    .ref-intro {
+      margin-bottom: 1.5rem;
+      color: #6b7280;
+    }
+
+    .ref-group-heading {
+      margin-bottom: 0.75rem;
+      font-size: 1rem;
+      color: #374151;
+    }
+
+    .ref-table-common {
+      margin-bottom: 2rem;
+    }
+
     /* ── Footer ── */
     footer {
       background: #111827;
@@ -437,6 +453,118 @@ primer scan pillow --ecosystem pypi --ai</div>
       </div>
 
     </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- CLI Reference -->
+  <section>
+    <h2>CLI reference</h2>
+    <p class="ref-intro">Run <code>primer &lt;command&gt; --help</code> for full flag details.</p>
+
+    <h3 class="ref-group-heading">Common</h3>
+    <table class="ref-table-common">
+      <thead>
+        <tr>
+          <th>Command</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>primer scan &lt;pkg&gt; --ecosystem &lt;eco&gt;</code></td>
+          <td>Scan a package for known vulnerabilities. Flags: <code>--version</code>, <code>--force</code>, <code>--verbose</code>, <code>--ai</code></td>
+        </tr>
+        <tr>
+          <td><code>primer init</code></td>
+          <td>Generate shims in <code>~/.primer/bin</code> and prepend to <code>$PATH</code></td>
+        </tr>
+        <tr>
+          <td><code>primer info</code></td>
+          <td>Show PATH order, shim health, cache stats, and active model (alias for <code>doctor</code>)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 class="ref-group-heading">Management</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Command</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>primer allow add &lt;pkg&gt; [--ecosystem]</code></td>
+          <td>Add a package to <code>.primer-ignore</code> — scanned but never blocked</td>
+        </tr>
+        <tr>
+          <td><code>primer allow remove &lt;pkg&gt; [--ecosystem]</code></td>
+          <td>Remove a package from the allow-list</td>
+        </tr>
+        <tr>
+          <td><code>primer allow list</code></td>
+          <td>Print all entries in <code>.primer-ignore</code></td>
+        </tr>
+        <tr>
+          <td><code>primer cache clear</code></td>
+          <td>Delete all cached vulnerability results</td>
+        </tr>
+        <tr>
+          <td><code>primer cache stats</code></td>
+          <td>Show entry count, total size on disk, and oldest/newest entry age</td>
+        </tr>
+        <tr>
+          <td><code>primer config set &lt;key&gt; &lt;value&gt;</code></td>
+          <td>Write a value to <code>~/.primer/config.toml</code>. Keys: <code>ai.backend</code>, <code>ai.model</code>, <code>ai.tokenizer</code></td>
+        </tr>
+        <tr>
+          <td><code>primer config get &lt;key&gt;</code></td>
+          <td>Read a single config value</td>
+        </tr>
+        <tr>
+          <td><code>primer config list</code></td>
+          <td>Print the full config</td>
+        </tr>
+        <tr>
+          <td><code>primer model add</code></td>
+          <td>Download the default SmolLM2 model from HuggingFace Hub</td>
+        </tr>
+        <tr>
+          <td><code>primer model add --from &lt;path&gt;</code></td>
+          <td>Import a local GGUF file (no network)</td>
+        </tr>
+        <tr>
+          <td><code>primer model add --repo &lt;repo&gt; --file &lt;file&gt;</code></td>
+          <td>Download a specific model from HuggingFace Hub</td>
+        </tr>
+        <tr>
+          <td><code>primer model list</code></td>
+          <td>List registered models with path and file size</td>
+        </tr>
+        <tr>
+          <td><code>primer model set &lt;target&gt;</code></td>
+          <td>Set the active inference target. Local: <code>/path/to/model.gguf</code>. Ollama: <code>ollama:llama3.2</code></td>
+        </tr>
+        <tr>
+          <td><code>primer hook install</code></td>
+          <td>Write <code>.git/hooks/pre-commit</code> to block vulnerable package additions</td>
+        </tr>
+        <tr>
+          <td><code>primer hook check</code></td>
+          <td>Scan staged manifest changes manually (also called by the hook itself)</td>
+        </tr>
+        <tr>
+          <td><code>primer completions &lt;shell&gt;</code></td>
+          <td>Emit a shell completion script. Shells: <code>bash</code>, <code>zsh</code>, <code>fish</code>, <code>powershell</code></td>
+        </tr>
+        <tr>
+          <td><code>primer uninit [--purge]</code></td>
+          <td>Remove shims and <code>$PATH</code> entry. <code>--purge</code> also deletes cache and model files</td>
+        </tr>
+      </tbody>
+    </table>
   </section>
 
   <hr class="divider">
