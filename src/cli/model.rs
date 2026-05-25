@@ -14,7 +14,12 @@ pub async fn add(
 ) -> Result<()> {
     #[cfg(feature = "ai")]
     {
-        let dl = crate::summary::download::DownloadOptions { from, tokenizer, repo, file };
+        let dl = crate::summary::download::DownloadOptions {
+            from,
+            tokenizer,
+            repo,
+            file,
+        };
         crate::summary::download::run(dl).await?;
     }
     #[cfg(not(feature = "ai"))]
@@ -41,7 +46,12 @@ pub fn list() -> Result<()> {
     }
 
     let cfg = crate::config::load().unwrap_or_default();
-    let active_model = cfg.ai.model.as_deref().and_then(|p| p.to_str()).unwrap_or("");
+    let active_model = cfg
+        .ai
+        .model
+        .as_deref()
+        .and_then(|p| p.to_str())
+        .unwrap_or("");
     let backend = cfg.ai.backend.as_deref().unwrap_or("local");
 
     println!("Models: {}\n", models_dir.display());
@@ -78,7 +88,11 @@ pub fn list() -> Result<()> {
     if backend == "ollama" {
         println!(
             "\n  * active backend: ollama ({})",
-            cfg.ai.model.as_ref().map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|| "(none)".into())
+            cfg.ai
+                .model
+                .as_ref()
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_else(|| "(none)".into())
         );
     }
 
@@ -101,7 +115,10 @@ pub fn set(target: &str) -> Result<()> {
         println!("  ✓ model   = {}", model_name);
         println!();
         println!("  Inference will be routed to http://localhost:11434");
-        println!("  Make sure Ollama is running and '{}' is pulled.", model_name);
+        println!(
+            "  Make sure Ollama is running and '{}' is pulled.",
+            model_name
+        );
     } else {
         // Local GGUF path
         let path = PathBuf::from(target);

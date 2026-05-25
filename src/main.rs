@@ -272,7 +272,11 @@ async fn main() -> Result<()> {
         Commands::Cache { command } => match command {
             CacheCommands::Clear => match cache::clear() {
                 Ok(0) => println!("Cache is already empty."),
-                Ok(n) => println!("Cleared {} cached entr{}.", n, if n == 1 { "y" } else { "ies" }),
+                Ok(n) => println!(
+                    "Cleared {} cached entr{}.",
+                    n,
+                    if n == 1 { "y" } else { "ies" }
+                ),
                 Err(e) => eprintln!("Failed to clear cache: {}", e),
             },
             CacheCommands::Stats => cache::stats()?,
@@ -288,7 +292,12 @@ async fn main() -> Result<()> {
         },
 
         Commands::Model { command } => match command {
-            ModelCommands::Add { from, tokenizer, repo, file } => {
+            ModelCommands::Add {
+                from,
+                tokenizer,
+                repo,
+                file,
+            } => {
                 cli::model::add(from, tokenizer, repo, file).await?;
             }
             ModelCommands::List => cli::model::list()?,

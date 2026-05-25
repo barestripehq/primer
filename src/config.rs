@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
@@ -81,10 +81,14 @@ pub fn get(key: &str) -> Result<Option<String>> {
 pub(crate) fn get_from(path: &Path, key: &str) -> Result<Option<String>> {
     let cfg = load_from(path)?;
     let value = match key {
-        "ai.backend"   => cfg.ai.backend.clone(),
-        "ai.model"     => cfg.ai.model.map(|p| p.to_string_lossy().into_owned()),
+        "ai.backend" => cfg.ai.backend.clone(),
+        "ai.model" => cfg.ai.model.map(|p| p.to_string_lossy().into_owned()),
         "ai.tokenizer" => cfg.ai.tokenizer.map(|p| p.to_string_lossy().into_owned()),
-        _ => bail!("unknown config key '{}'. Valid keys: {}", key, VALID_KEYS.join(", ")),
+        _ => bail!(
+            "unknown config key '{}'. Valid keys: {}",
+            key,
+            VALID_KEYS.join(", ")
+        ),
     };
     Ok(value)
 }
@@ -102,9 +106,13 @@ pub(crate) fn set_to(path: &Path, key: &str, value: &str) -> Result<()> {
             }
             cfg.ai.backend = Some(value.to_string());
         }
-        "ai.model"     => cfg.ai.model     = Some(PathBuf::from(value)),
+        "ai.model" => cfg.ai.model = Some(PathBuf::from(value)),
         "ai.tokenizer" => cfg.ai.tokenizer = Some(PathBuf::from(value)),
-        _ => bail!("unknown config key '{}'. Valid keys: {}", key, VALID_KEYS.join(", ")),
+        _ => bail!(
+            "unknown config key '{}'. Valid keys: {}",
+            key,
+            VALID_KEYS.join(", ")
+        ),
     }
     save_to(path, &cfg)?;
     println!("  ✓ {} = {}", key, value);
@@ -121,11 +129,19 @@ pub fn list() -> Result<()> {
     );
     println!(
         "  ai.model     = {}",
-        cfg.ai.model.as_ref().map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|| "(not set)".into())
+        cfg.ai
+            .model
+            .as_ref()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "(not set)".into())
     );
     println!(
         "  ai.tokenizer = {}",
-        cfg.ai.tokenizer.as_ref().map(|p| p.to_string_lossy().into_owned()).unwrap_or_else(|| "(not set)".into())
+        cfg.ai
+            .tokenizer
+            .as_ref()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "(not set)".into())
     );
     Ok(())
 }

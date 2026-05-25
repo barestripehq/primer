@@ -247,8 +247,16 @@ mod tests {
     #[test]
     fn stats_counts_entries_correctly() {
         let dir = tempfile::tempdir().unwrap();
-        put_to_dir(dir.path(), "pkg-a", "PyPI", None, &[vuln("GHSA-0001")], 1000).unwrap();
-        put_to_dir(dir.path(), "pkg-b", "npm",  None, &[vuln("GHSA-0002")], 2000).unwrap();
+        put_to_dir(
+            dir.path(),
+            "pkg-a",
+            "PyPI",
+            None,
+            &[vuln("GHSA-0001")],
+            1000,
+        )
+        .unwrap();
+        put_to_dir(dir.path(), "pkg-b", "npm", None, &[vuln("GHSA-0002")], 2000).unwrap();
         // stats_for_dir prints output; we just verify it doesn't error and the dir has 2 files
         assert!(stats_for_dir(dir.path()).is_ok());
         let count = std::fs::read_dir(dir.path())
