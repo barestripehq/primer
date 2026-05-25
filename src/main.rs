@@ -276,8 +276,7 @@ async fn main() -> Result<()> {
             direct_only,
         } => {
             // --direct-only flag OR global config key both disable transitive scanning
-            let direct_only =
-                direct_only || crate::config::load().unwrap_or_default().direct_only;
+            let direct_only = direct_only || crate::config::load().unwrap_or_default().direct_only;
 
             if let Some(path) = file {
                 // --- file scan (manifest or lockfile) ---
@@ -286,8 +285,7 @@ async fn main() -> Result<()> {
                     .and_then(|n| n.to_str())
                     .unwrap_or_default();
                 // Treat lockfiles as manifests when direct-only is set
-                let is_lockfile =
-                    !direct_only && lockfile::LOCKFILE_NAMES.contains(&filename);
+                let is_lockfile = !direct_only && lockfile::LOCKFILE_NAMES.contains(&filename);
                 let eco = ecosystem
                     .as_ref()
                     .map(|e| e.as_osv_str())

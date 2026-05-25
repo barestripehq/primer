@@ -151,9 +151,7 @@ fn check_config() {
     if threshold == "high" {
         println!("    CRITICAL and HIGH findings block installs (default)");
     } else {
-        println!(
-            "    run `primer config set prompt-threshold high` to restore default blocking"
-        );
+        println!("    run `primer config set prompt-threshold high` to restore default blocking");
     }
 }
 

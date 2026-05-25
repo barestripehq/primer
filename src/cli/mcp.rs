@@ -97,7 +97,11 @@ async fn dispatch(input: &str) -> Option<String> {
             let ecosystem = match args["ecosystem"].as_str() {
                 Some(e) => e,
                 None => {
-                    return Some(json_error(id, -32602, "Missing required argument: ecosystem"))
+                    return Some(json_error(
+                        id,
+                        -32602,
+                        "Missing required argument: ecosystem",
+                    ));
                 }
             };
             let version = args["version"].as_str();
@@ -115,9 +119,7 @@ async fn dispatch(input: &str) -> Option<String> {
 // ---------------------------------------------------------------------------
 
 async fn call_scan_package(name: &str, ecosystem: &str, version: Option<&str>) -> Value {
-    let ver_label = version
-        .map(|v| format!(" {}", v))
-        .unwrap_or_default();
+    let ver_label = version.map(|v| format!(" {}", v)).unwrap_or_default();
 
     match crate::engine::osv::query(name, ecosystem, version, false).await {
         Ok(vulns) if vulns.is_empty() => {
@@ -136,8 +138,14 @@ async fn call_scan_package(name: &str, ecosystem: &str, version: Option<&str>) -
 
         Ok(vulns) => {
             let total = vulns.len();
-            let critical = vulns.iter().filter(|v| v.severity_label() == "CRITICAL").count();
-            let high = vulns.iter().filter(|v| v.severity_label() == "HIGH").count();
+            let critical = vulns
+                .iter()
+                .filter(|v| v.severity_label() == "CRITICAL")
+                .count();
+            let high = vulns
+                .iter()
+                .filter(|v| v.severity_label() == "HIGH")
+                .count();
 
             let mut lines = vec![format!(
                 "⚠ {}{} ({}) — found {} vulnerabilit{}:",
@@ -308,7 +316,11 @@ mod tests {
 
     #[tokio::test]
     async fn initialized_notification_returns_none() {
-        assert!(dispatch(&notif("notifications/initialized")).await.is_none());
+        assert!(
+            dispatch(&notif("notifications/initialized"))
+                .await
+                .is_none()
+        );
     }
 
     #[tokio::test]
@@ -325,7 +337,12 @@ mod tests {
         );
         let resp = dispatch(&input).await.unwrap();
         let v: Value = serde_json::from_str(&resp).unwrap();
-        assert!(v["error"]["message"].as_str().unwrap().contains("Unknown tool"));
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("Unknown tool")
+        );
     }
 
     #[tokio::test]
@@ -350,7 +367,12 @@ mod tests {
         );
         let resp = dispatch(&input).await.unwrap();
         let v: Value = serde_json::from_str(&resp).unwrap();
-        assert!(v["error"]["message"].as_str().unwrap().contains("ecosystem"));
+        assert!(
+            v["error"]["message"]
+                .as_str()
+                .unwrap()
+                .contains("ecosystem")
+        );
     }
 
     #[tokio::test]
