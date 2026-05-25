@@ -6,6 +6,18 @@
   <title>primer — Pre-install security interceptor for package managers</title>
   <meta name="description" content="primer scans packages against the OSV vulnerability database before they hit your system.">
   <link rel="canonical" href="https://primer-scan.netlify.app">
+
+  <!-- Open Graph -->
+  <meta property="og:type"        content="website">
+  <meta property="og:url"         content="https://primer-scan.netlify.app">
+  <meta property="og:title"       content="primer — Pre-install security interceptor for package managers">
+  <meta property="og:description" content="primer scans packages against the OSV vulnerability database before they hit your system.">
+
+  <!-- Twitter / X -->
+  <meta name="twitter:card"        content="summary">
+  <meta name="twitter:title"       content="primer — Pre-install security interceptor for package managers">
+  <meta name="twitter:description" content="primer scans packages against the OSV vulnerability database before they hit your system.">
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -64,13 +76,16 @@
       border-radius: 6px;
       color: #9ca3af;
       cursor: pointer;
-      padding: 4px 10px;
-      font-size: 0.75rem;
+      padding: 4px 8px;
+      display: inline-flex;
+      align-items: center;
       flex-shrink: 0;
       transition: background 0.15s;
     }
 
     .copy-btn:hover { background: #4b5563; color: #fff; }
+    .copy-btn svg { pointer-events: none; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 
     .hero-links {
       display: flex;
@@ -148,6 +163,8 @@
       align-items: center;
       gap: 8px;
     }
+
+    .card h3 svg { color: #34d399; flex-shrink: 0; }
 
     .card p { font-size: 0.9rem; color: #6b7280; }
 
@@ -264,7 +281,10 @@
     <div class="install-box">
       <span class="prompt">$</span>
       <span id="install-cmd">curl --proto '=https' --tlsv1.2 -fsSL https://github.com/callezenwaka/primer/releases/latest/download/primer-installer.sh | sh</span>
-      <button type="button" class="copy-btn" onclick="copyInstall()">copy</button>
+      <button type="button" class="copy-btn" onclick="copyInstall()" aria-label="Copy install command">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+        <span class="sr-only">Copy install command</span>
+      </button>
     </div>
 
     <div class="hero-links">
@@ -297,27 +317,45 @@
     <h2>Features</h2>
     <div class="cards">
       <div class="card">
-        <h3>Intercept</h3>
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+          Intercept
+        </h3>
         <p>Shims sit ahead of your package managers in <code>$PATH</code>. Every install is scanned before execution.</p>
       </div>
       <div class="card">
-        <h3>Scan</h3>
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/></svg>
+          Scan
+        </h3>
         <p>Run <code>primer scan &lt;pkg&gt; --ecosystem &lt;eco&gt;</code> to check any package on demand without installing it.</p>
       </div>
       <div class="card">
-        <h3>Cache</h3>
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 15 21.84"/><path d="M21 5V8"/><path d="M21 12L18 17H22L19 22"/><path d="M3 12A9 3 0 0 0 14.59 14.87"/></svg>
+          Cache
+        </h3>
         <p>Results cached locally for 24 hours. Repeat installs are instant with stale-on-error fallback.</p>
       </div>
       <div class="card">
-        <h3>AI Summary</h3>
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18V5"/><path d="M15 13a4.17 4.17 0 0 1-3-4 4.17 4.17 0 0 1-3 4"/><path d="M17.598 6.5A3 3 0 1 0 12 5a3 3 0 1 0-5.598 1.5"/><path d="M17.997 5.125a4 4 0 0 1 2.526 5.77"/><path d="M18 18a4 4 0 0 0 2-7.464"/><path d="M19.967 17.483A4 4 0 1 1 12 18a4 4 0 1 1-7.967-.517"/><path d="M6 18a4 4 0 0 1-2-7.464"/><path d="M6.003 5.125a4 4 0 0 0-2.526 5.77"/></svg>
+          AI Summary
+        </h3>
         <p>Local SLM generates plain-English CVE summaries. No cloud dependency, no account required.</p>
       </div>
       <div class="card">
-        <h3>Git Hook</h3>
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/></svg>
+          Git Hook
+        </h3>
         <p>Pre-commit hook blocks commits that add vulnerable packages to manifests.</p>
       </div>
       <div class="card">
-        <h3>Multi-ecosystem</h3>
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></svg>
+          Polyglot
+        </h3>
         <p>Covers Python, Node.js, Go, and Rust out of the box — one tool across your entire stack.</p>
       </div>
     </div>
@@ -333,7 +371,10 @@
       <div class="step-block">
         <div class="step-header">
           <span># 1. Install</span>
-          <button type="button" class="copy-btn" onclick="copyStep(this)">copy</button>
+          <button type="button" class="copy-btn" onclick="copyStep(this)" aria-label="Copy command">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span class="sr-only">Copy command</span>
+          </button>
         </div>
         <div class="step-cmd">
           <div data-copy="curl --proto '=https' --tlsv1.2 -fsSL https://github.com/callezenwaka/primer/releases/latest/download/primer-installer.sh | sh">curl --proto '=https' --tlsv1.2 -fsSL \
@@ -344,7 +385,10 @@
       <div class="step-block">
         <div class="step-header">
           <span># 2. Set up shims</span>
-          <button type="button" class="copy-btn" onclick="copyStep(this)">copy</button>
+          <button type="button" class="copy-btn" onclick="copyStep(this)" aria-label="Copy command">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span class="sr-only">Copy command</span>
+          </button>
         </div>
         <div class="step-cmd">
           <div data-copy="primer init">primer init</div>
@@ -354,7 +398,10 @@
       <div class="step-block">
         <div class="step-header">
           <span># 3. Use your package manager as normal — primer intercepts automatically</span>
-          <button type="button" class="copy-btn" onclick="copyStep(this)">copy</button>
+          <button type="button" class="copy-btn" onclick="copyStep(this)" aria-label="Copy command">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span class="sr-only">Copy command</span>
+          </button>
         </div>
         <div class="step-cmd">
           <div data-copy="pip install requests&#10;npm install express">pip install requests
@@ -365,7 +412,10 @@ npm install express</div>
       <div class="step-block">
         <div class="step-header">
           <span># 4. Optional: enable AI summaries</span>
-          <button type="button" class="copy-btn" onclick="copyStep(this)">copy</button>
+          <button type="button" class="copy-btn" onclick="copyStep(this)" aria-label="Copy command">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span class="sr-only">Copy command</span>
+          </button>
         </div>
         <div class="step-cmd">
           <div data-copy="primer update-models&#10;primer scan pillow --ecosystem pypi --ai">primer update-models
@@ -376,7 +426,10 @@ primer scan pillow --ecosystem pypi --ai</div>
       <div class="step-block">
         <div class="step-header">
           <span># 5. Optional: block vulnerable commits</span>
-          <button type="button" class="copy-btn" onclick="copyStep(this)">copy</button>
+          <button type="button" class="copy-btn" onclick="copyStep(this)" aria-label="Copy command">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+            <span class="sr-only">Copy command</span>
+          </button>
         </div>
         <div class="step-cmd">
           <div data-copy="primer hook install">primer hook install</div>
@@ -430,21 +483,22 @@ primer scan pillow --ecosystem pypi --ai</div>
   </footer>
 
   <script>
+    const ICON_COPY = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg><span class="sr-only">Copy command</span>`;
+    const ICON_CHECK = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg><span class="sr-only">Copied</span>`;
+
+    function flashCopied(btn) {
+      btn.innerHTML = ICON_CHECK;
+      setTimeout(() => btn.innerHTML = ICON_COPY, 2000);
+    }
+
     function copyInstall() {
       const text = document.getElementById('install-cmd').textContent;
-      navigator.clipboard.writeText(text).then(() => {
-        const btn = document.querySelector('.copy-btn');
-        btn.textContent = 'copied!';
-        setTimeout(() => btn.textContent = 'copy', 2000);
-      });
+      navigator.clipboard.writeText(text).then(() => flashCopied(document.querySelector('.install-box .copy-btn')));
     }
 
     function copyStep(btn) {
       const text = btn.closest('.step-block').querySelector('[data-copy]').dataset.copy;
-      navigator.clipboard.writeText(text).then(() => {
-        btn.textContent = 'copied!';
-        setTimeout(() => btn.textContent = 'copy', 2000);
-      });
+      navigator.clipboard.writeText(text).then(() => flashCopied(btn));
     }
   </script>
 
