@@ -19,8 +19,8 @@ const WATCHED_MANIFESTS: &[&str] = &[
 const DEBOUNCE: Duration = Duration::from_millis(500);
 
 pub async fn run(directory: Option<PathBuf>, scan_on_start: bool) -> Result<()> {
-    let dir = directory
-        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    let dir =
+        directory.unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
 
     let watch_paths: Vec<PathBuf> = WATCHED_MANIFESTS
         .iter()
@@ -34,10 +34,7 @@ pub async fn run(directory: Option<PathBuf>, scan_on_start: bool) -> Result<()> 
             "⚠".yellow(),
             dir.display()
         );
-        eprintln!(
-            "  Watching for: {}",
-            WATCHED_MANIFESTS.join(", ")
-        );
+        eprintln!("  Watching for: {}", WATCHED_MANIFESTS.join(", "));
     }
 
     if scan_on_start {
@@ -63,10 +60,7 @@ pub async fn run(directory: Option<PathBuf>, scan_on_start: bool) -> Result<()> 
     loop {
         match rx.recv() {
             Ok(Ok(event)) => {
-                if !matches!(
-                    event.kind,
-                    EventKind::Modify(_) | EventKind::Create(_)
-                ) {
+                if !matches!(event.kind, EventKind::Modify(_) | EventKind::Create(_)) {
                     continue;
                 }
 
@@ -82,10 +76,10 @@ pub async fn run(directory: Option<PathBuf>, scan_on_start: bool) -> Result<()> 
 
                     // Debounce: skip if we scanned this file within DEBOUNCE window.
                     let now = Instant::now();
-                    if let Some(&last) = last_scan.get(&path) {
-                        if now.duration_since(last) < DEBOUNCE {
-                            continue;
-                        }
+                    if let Some(&last) = last_scan.get(&path)
+                        && now.duration_since(last) < DEBOUNCE
+                    {
+                        continue;
                     }
                     last_scan.insert(path.clone(), now);
 
@@ -179,6 +173,10 @@ async fn scan_file(path: &Path) {
     }
 
     if !any_blocked {
-        println!("  {} Scan complete — {} clean.", "✓".green(), packages.len());
+        println!(
+            "  {} Scan complete — {} clean.",
+            "✓".green(),
+            packages.len()
+        );
     }
 }

@@ -393,7 +393,10 @@ async fn intercept_manifest(pm: &PackageManager, primary: &'static str, direct_o
     } else {
         direct_count = direct_pkgs.len();
         transitive_count = 0;
-        scan_list = direct_pkgs.into_iter().map(|p| (p.name, p.version)).collect();
+        scan_list = direct_pkgs
+            .into_iter()
+            .map(|p| (p.name, p.version))
+            .collect();
     }
 
     if scan_list.is_empty() {
@@ -479,10 +482,11 @@ async fn scan_transitive_diff(pm: &PackageManager, before: Option<(String, Strin
     // Packages present in the new lockfile but absent (or at a different
     // version) in the pre-install snapshot are the newly added transitives.
     let added: Vec<_> = if let Some((_, old_content)) = before {
-        let old_keys: std::collections::HashSet<String> = crate::lockfile::parse_lockfile(lf_name, &old_content)
-            .into_iter()
-            .map(|p| format!("{}@{}", p.name, p.version))
-            .collect();
+        let old_keys: std::collections::HashSet<String> =
+            crate::lockfile::parse_lockfile(lf_name, &old_content)
+                .into_iter()
+                .map(|p| format!("{}@{}", p.name, p.version))
+                .collect();
         new_pkgs
             .into_iter()
             .filter(|p| !old_keys.contains(&format!("{}@{}", p.name, p.version)))
@@ -564,10 +568,10 @@ pub async fn run(pm: PackageManager, args: Vec<String>) -> Result<()> {
             }
             std::process::exit(exit_code);
         }
-    } else if cfg.intercept_restore {
-        if let Some(manifest) = is_bare_restore(&pm, &args) {
-            intercept_manifest(&pm, manifest, cfg.direct_only).await;
-        }
+    } else if cfg.intercept_restore
+        && let Some(manifest) = is_bare_restore(&pm, &args)
+    {
+        intercept_manifest(&pm, manifest, cfg.direct_only).await;
     }
 
     // Fast path: exec replaces the current process (no wrapper overhead).
@@ -828,9 +832,7 @@ mod tests {
 
     #[test]
     fn go_get_not_bare_restore() {
-        assert!(
-            is_bare_restore(&PackageManager::Go, &args("get golang.org/x/net")).is_none()
-        );
+        assert!(is_bare_restore(&PackageManager::Go, &args("get golang.org/x/net")).is_none());
     }
 
     #[test]
@@ -913,10 +915,7 @@ mod tests {
 
     #[test]
     fn canonical_lockfile_yarn_is_yarn_lock() {
-        assert_eq!(
-            canonical_lockfile(&PackageManager::Yarn),
-            Some("yarn.lock")
-        );
+        assert_eq!(canonical_lockfile(&PackageManager::Yarn), Some("yarn.lock"));
     }
 
     #[test]

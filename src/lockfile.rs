@@ -186,16 +186,16 @@ fn parse_yarn_lock(content: &str) -> Vec<ResolvedPackage> {
         }
 
         // Indented `version` field inside a block
-        if let Some(ref name) = current_name {
-            if let Some(ver_raw) = line_trimmed.strip_prefix("version ") {
-                let version = ver_raw.trim().trim_matches('"').to_owned();
-                packages.push(ResolvedPackage {
-                    name: name.clone(),
-                    version,
-                    ecosystem: "npm",
-                });
-                current_name = None; // one version per block
-            }
+        if let Some(ref name) = current_name
+            && let Some(ver_raw) = line_trimmed.strip_prefix("version ")
+        {
+            let version = ver_raw.trim().trim_matches('"').to_owned();
+            packages.push(ResolvedPackage {
+                name: name.clone(),
+                version,
+                ecosystem: "npm",
+            });
+            current_name = None; // one version per block
         }
     }
 
@@ -206,9 +206,8 @@ fn parse_yarn_lock(content: &str) -> Vec<ResolvedPackage> {
 /// `"express@^4.18.2"` → `Some("express")`
 /// `"@types/node@^18.0.0"` → `Some("@types/node")`
 fn extract_yarn_name(descriptor: &str) -> Option<String> {
-    if descriptor.starts_with('@') {
+    if let Some(rest) = descriptor.strip_prefix('@') {
         // Scoped: @scope/name@version — split on the second '@'
-        let rest = &descriptor[1..];
         let at = rest.find('@')?;
         Some(format!("@{}", &rest[..at]))
     } else {
@@ -262,9 +261,8 @@ fn parse_pnpm_lock(content: &str) -> Vec<ResolvedPackage> {
 fn parse_pnpm_key(key: &str) -> Option<ResolvedPackage> {
     let key = key.trim_start_matches('/');
 
-    let (name, version) = if key.starts_with('@') {
+    let (name, version) = if let Some(rest) = key.strip_prefix('@') {
         // Scoped package
-        let rest = &key[1..];
         if let Some(at_pos) = rest.find('@') {
             // v6/v9: @scope/name@version
             let full_name = format!("@{}", &rest[..at_pos]);
@@ -301,10 +299,7 @@ fn parse_pnpm_key(key: &str) -> Option<ResolvedPackage> {
     };
 
     // Require name and a semver-looking version (starts with digit)
-    if name.is_empty()
-        || version.is_empty()
-        || !version.starts_with(|c: char| c.is_ascii_digit())
-    {
+    if name.is_empty() || version.is_empty() || !version.starts_with(|c: char| c.is_ascii_digit()) {
         return None;
     }
 
@@ -595,7 +590,8 @@ express@^4.18.2:
 
     #[test]
     fn pnpm_lock_handles_scoped_packages() {
-        let content = "packages:\n  /@types/node@18.0.0:\n    resolution: {integrity: sha512-abc}\n";
+        let content =
+            "packages:\n  /@types/node@18.0.0:\n    resolution: {integrity: sha512-abc}\n";
         let pkgs = parse_pnpm_lock(content);
         assert_eq!(pkgs.len(), 1);
         assert_eq!(pkgs[0].name, "@types/node");

@@ -98,10 +98,10 @@ async fn scan_all(
         } else {
             Some(version.as_str())
         };
-        if let Ok(vulns) = osv::query(name, eco, ver, false).await {
-            if !vulns.is_empty() {
-                map.insert(format!("{}@{}", name, version), vulns);
-            }
+        if let Ok(vulns) = osv::query(name, eco, ver, false).await
+            && !vulns.is_empty()
+        {
+            map.insert(format!("{}@{}", name, version), vulns);
         }
     }
     map
@@ -214,10 +214,7 @@ fn emit_spdx(
             });
 
             if !vuln_ids.is_empty() {
-                pkg["comment"] = json!(format!(
-                    "Vulnerabilities: {}",
-                    vuln_ids.join(", ")
-                ));
+                pkg["comment"] = json!(format!("Vulnerabilities: {}", vuln_ids.join(", ")));
             }
 
             pkg
@@ -282,7 +279,20 @@ fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
         year += 1;
     }
     let leap = is_leap(year);
-    let month_days = [31, if leap { 29 } else { 28 }, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    let month_days = [
+        31,
+        if leap { 29 } else { 28 },
+        31,
+        30,
+        31,
+        30,
+        31,
+        31,
+        30,
+        31,
+        30,
+        31,
+    ];
     let mut month = 1u64;
     for &md in &month_days {
         if days < md {
@@ -295,7 +305,7 @@ fn days_to_ymd(mut days: u64) -> (u64, u64, u64) {
 }
 
 fn is_leap(y: u64) -> bool {
-    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
+    (y.is_multiple_of(4) && !y.is_multiple_of(100)) || y.is_multiple_of(400)
 }
 
 fn uuid_v4() -> String {
@@ -325,7 +335,10 @@ mod tests {
 
     #[test]
     fn purl_pypi() {
-        assert_eq!(purl("PyPI", "requests", "2.28.0"), "pkg:pypi/requests@2.28.0");
+        assert_eq!(
+            purl("PyPI", "requests", "2.28.0"),
+            "pkg:pypi/requests@2.28.0"
+        );
     }
 
     #[test]

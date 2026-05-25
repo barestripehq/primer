@@ -14,7 +14,12 @@ use crate::prompt;
 const HOOK_SCRIPT: &str = "#!/bin/sh
 # Rust projects: enforce formatting and lints before commit
 if [ -f Cargo.toml ]; then
-  cargo fmt --check || exit 1
+  # Stash unstaged changes so fmt/clippy see only what is being committed.
+  git stash --quiet --keep-index --include-untracked
+  cargo fmt --check
+  FMT=$?
+  git stash pop --quiet
+  [ $FMT -eq 0 ] || { echo 'Run cargo fmt and stage the result.'; exit 1; }
   cargo clippy -- -D warnings || exit 1
 fi
 exec primer hook check

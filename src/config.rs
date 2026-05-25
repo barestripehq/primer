@@ -105,10 +105,7 @@ pub(crate) fn get_from(path: &Path, key: &str) -> Result<Option<String>> {
         "ai.tokenizer" => cfg.ai.tokenizer.map(|p| p.to_string_lossy().into_owned()),
         "intercept-restore" => Some(cfg.intercept_restore.to_string()),
         "direct-only" => Some(cfg.direct_only.to_string()),
-        "prompt-threshold" => Some(
-            cfg.prompt_threshold
-                .unwrap_or_else(|| "high".to_string()),
-        ),
+        "prompt-threshold" => Some(cfg.prompt_threshold.unwrap_or_else(|| "high".to_string())),
         _ => bail!(
             "unknown config key '{}'. Valid keys: {}",
             key,

@@ -309,11 +309,7 @@ pub fn report_post_install(package: &str, ecosystem: &str, vulns: &[Vulnerabilit
                 "vulnerabilities"
             },
         );
-        eprintln!(
-            "  Consider: {} {}",
-            pm_remove_hint(ecosystem),
-            package
-        );
+        eprintln!("  Consider: {} {}", pm_remove_hint(ecosystem), package);
         eprintln!();
         return true;
     }
