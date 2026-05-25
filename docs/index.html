@@ -376,6 +376,13 @@
         </h3>
         <p>Covers Python, Node.js, Go, and Rust out of the box — one tool across your entire stack.</p>
       </div>
+      <div class="card">
+        <h3>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          Transitive Scanning
+        </h3>
+        <p>Diffs the lockfile after install to scan the full dependency tree — not just the package you named. Opt out per-command with <code>--direct-only</code>.</p>
+      </div>
     </div>
   </section>
 
@@ -492,7 +499,7 @@ primer scan pillow --ecosystem pypi --ai</div>
         </tr>
         <tr>
           <td><code>primer scan --file &lt;path&gt;</code></td>
-          <td>Scan all packages declared in a manifest file without installing. Supports <code>requirements.txt</code>, <code>pyproject.toml</code>, <code>package.json</code>, <code>go.mod</code>, <code>Cargo.toml</code></td>
+          <td>Scan all packages in a manifest or lockfile. Manifests: <code>requirements.txt</code>, <code>pyproject.toml</code>, <code>package.json</code>, <code>go.mod</code>, <code>Cargo.toml</code>. Lockfiles: <code>package-lock.json</code>, <code>yarn.lock</code>, <code>pnpm-lock.yaml</code>, <code>Cargo.lock</code>, <code>go.sum</code>, <code>uv.lock</code>, <code>poetry.lock</code>. Add <code>--direct-only</code> to skip transitive packages.</td>
         </tr>
         <tr>
           <td><code>primer init</code></td>
@@ -536,7 +543,7 @@ primer scan pillow --ecosystem pypi --ai</div>
         </tr>
         <tr>
           <td><code>primer config set &lt;key&gt; &lt;value&gt;</code></td>
-          <td>Write a value to <code>~/.primer/config.toml</code>. Keys: <code>ai.backend</code>, <code>ai.model</code>, <code>ai.tokenizer</code>, <code>intercept-restore</code></td>
+          <td>Write a value to <code>~/.primer/config.toml</code>. Keys: <code>ai.backend</code>, <code>ai.model</code>, <code>ai.tokenizer</code>, <code>intercept-restore</code>, <code>direct-only</code></td>
         </tr>
         <tr>
           <td><code>primer config get &lt;key&gt;</code></td>

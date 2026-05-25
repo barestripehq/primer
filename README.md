@@ -79,14 +79,44 @@ primer scan --file requirements.txt
 primer scan --file package.json
 primer scan --file go.mod
 primer scan --file Cargo.toml
+
+# Scan a lockfile directly — resolves exact pinned versions for every transitive dep
+primer scan --file package-lock.json
+primer scan --file yarn.lock
+primer scan --file Cargo.lock
+
+# Skip transitive dependencies (direct packages only)
+primer scan --file package.json --direct-only
 ```
 
-Each finding now shows the patched version when OSV provides one:
+Each finding shows the patched version when OSV provides one:
 
 ```
 pillow 9.0.0 — GHSA-56pw-mpj4-fxjw [CRITICAL]
   Summary: Heap buffer overflow in TIFF image parser
   Fixed in: 9.0.1
+```
+
+### Transitive dependency scanning
+
+By default, primer scans the full dependency tree — not just the package you name, but everything it pulls in.
+
+**Explicit installs** (`npm install express`, `cargo add serde`): primer scans the named package first (pre-install), then after the PM runs it diffs the lockfile and scans any newly added transitive packages. Post-install findings include a remove hint since the package is already on disk.
+
+**Bare restores** (`npm install`, `go mod download`): when `intercept-restore` is enabled and a lockfile exists alongside the manifest, primer loads it to resolve exact versions for both direct and transitive packages before the PM runs. The header shows the split:
+
+```
+  primer: scanning package.json — 3 direct + 47 transitive packages
+```
+
+**Opt out** — skip transitive scanning when you want low-noise results:
+
+```sh
+# Per command
+primer scan --file package.json --direct-only
+
+# Globally (writes to ~/.primer/config.toml)
+primer config set direct-only true
 ```
 
 ### Setup and teardown
@@ -166,17 +196,17 @@ By default, bare restore commands (`npm install` with no packages, `go mod downl
 primer config set intercept-restore true
 ```
 
-When enabled, primer scans the relevant manifest for each PM's "install all" form before passing through:
+When enabled, primer scans the relevant manifest for each PM's "install all" form before passing through. If a lockfile is present, primer loads it to include transitive packages at exact pinned versions:
 
-| Command | Manifest scanned |
-|---------|-----------------|
-| `npm install` / `pnpm install` / `yarn` | `package.json` |
-| `pip install` (no packages) / `uv sync` | `requirements.txt` → `pyproject.toml` |
-| `poetry install` | `pyproject.toml` |
-| `go mod download` | `go.mod` |
-| `cargo build` / `cargo fetch` / `cargo check` | `Cargo.toml` |
+| Command | Manifest scanned | Lockfile (if present) |
+|---------|-----------------|----------------------|
+| `npm install` / `pnpm install` / `yarn` | `package.json` | `package-lock.json`, `yarn.lock`, or `pnpm-lock.yaml` |
+| `pip install` (no packages) / `uv sync` | `requirements.txt` → `pyproject.toml` | `uv.lock`, `poetry.lock` |
+| `poetry install` | `pyproject.toml` | `poetry.lock`, `uv.lock` |
+| `go mod download` | `go.mod` | `go.sum` |
+| `cargo build` / `cargo fetch` / `cargo check` | `Cargo.toml` | `Cargo.lock` |
 
-Disabled by default — large projects can have many deps. Cache makes repeat scans instant.
+Disabled by default — large projects can have many deps. Cache makes repeat scans instant. Use `--direct-only` (or `primer config set direct-only true`) to skip transitive packages.
 
 ## CI / non-interactive mode
 

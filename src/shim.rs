@@ -187,9 +187,11 @@ pub fn find_real_binary(name: &str) -> Option<PathBuf> {
 }
 
 // ---------------------------------------------------------------------------
-// Exec real binary (replaces current process on Unix)
+// Exec / spawn real binary
 // ---------------------------------------------------------------------------
 
+/// Replace the current process with the real binary (Unix exec semantics).
+/// Returns an error only if exec itself fails (e.g. binary not found).
 #[cfg(unix)]
 pub fn exec_real_binary(binary: &Path, args: &[String]) -> anyhow::Error {
     use std::os::unix::process::CommandExt;
@@ -199,13 +201,21 @@ pub fn exec_real_binary(binary: &Path, args: &[String]) -> anyhow::Error {
 
 #[cfg(not(unix))]
 pub fn exec_real_binary(binary: &Path, args: &[String]) -> anyhow::Error {
-    // On Windows, spawn and wait instead of exec.
     match std::process::Command::new(binary).args(args).status() {
-        Ok(status) => {
-            std::process::exit(status.code().unwrap_or(1));
-        }
+        Ok(status) => std::process::exit(status.code().unwrap_or(1)),
         Err(e) => anyhow::Error::from(e),
     }
+}
+
+/// Spawn the real binary as a child process, wait for completion, and return
+/// its exit code.  Used when we need to observe the filesystem state *after*
+/// the PM runs (transitive-scan diff path).
+pub fn run_child_exit_code(binary: &Path, args: &[String]) -> anyhow::Result<i32> {
+    Ok(std::process::Command::new(binary)
+        .args(args)
+        .status()?
+        .code()
+        .unwrap_or(1))
 }
 
 // ---------------------------------------------------------------------------
@@ -288,15 +298,28 @@ pub fn is_bare_restore(pm: &PackageManager, args: &[String]) -> Option<&'static 
     }
 }
 
+/// Lockfile filenames to try for a given manifest, in preference order.
+pub fn lockfile_candidates(manifest: &str) -> &'static [&'static str] {
+    match manifest {
+        "requirements.txt" | "pyproject.toml" => &["uv.lock", "poetry.lock"],
+        "package.json" => &["package-lock.json", "yarn.lock", "pnpm-lock.yaml"],
+        "go.mod" => &["go.sum"],
+        "Cargo.toml" => &["Cargo.lock"],
+        _ => &[],
+    }
+}
+
 /// Scan a manifest file found in the current directory.
-/// Silently skips if the file does not exist or is empty.
-async fn intercept_manifest(pm: &PackageManager, primary: &'static str) {
-    let (path, name): (std::path::PathBuf, &str) = {
+/// When `direct_only` is false (default), also scans transitive deps from the
+/// associated lockfile if one exists alongside the manifest.
+/// Silently skips if the manifest does not exist or is empty.
+async fn intercept_manifest(pm: &PackageManager, primary: &'static str, direct_only: bool) {
+    // Resolve the actual manifest path (with Python fallback).
+    let (manifest_path, manifest_name): (std::path::PathBuf, &str) = {
         let p = std::path::Path::new(primary);
         if p.exists() {
             (p.to_owned(), primary)
         } else if primary == "requirements.txt" {
-            // Python fallback: requirements.txt → pyproject.toml
             let fallback = std::path::Path::new("pyproject.toml");
             if fallback.exists() {
                 (fallback.to_owned(), "pyproject.toml")
@@ -308,40 +331,195 @@ async fn intercept_manifest(pm: &PackageManager, primary: &'static str) {
         }
     };
 
-    let content = match std::fs::read_to_string(&path) {
+    let manifest_content = match std::fs::read_to_string(&manifest_path) {
         Ok(c) => c,
         Err(_) => return,
     };
 
-    let packages = crate::manifest::parse_file(name, &content);
-    if packages.is_empty() {
+    let direct_pkgs = crate::manifest::parse_file(manifest_name, &manifest_content);
+    if direct_pkgs.is_empty() {
         return;
     }
 
-    eprintln!(
-        "  primer: scanning {} ({} packages listed)",
-        name,
-        packages.len()
-    );
+    // Build scan list: lockfile (transitive) when available and allowed,
+    // otherwise fall back to manifest packages only.
+    let scan_list: Vec<(String, Option<String>)>;
+    let direct_count: usize;
+    let transitive_count: usize;
+
+    let lockfile_data = if !direct_only {
+        lockfile_candidates(manifest_name)
+            .iter()
+            .find_map(|&lf| {
+                std::fs::read_to_string(lf)
+                    .ok()
+                    .map(|content| (lf, content))
+            })
+            .and_then(|(lf_name, lf_content)| {
+                let pkgs = crate::lockfile::parse_lockfile(lf_name, &lf_content);
+                if pkgs.is_empty() { None } else { Some(pkgs) }
+            })
+    } else {
+        None
+    };
+
+    if let Some(lf_pkgs) = lockfile_data {
+        // Direct names for grouping (manifest declares these explicitly).
+        let direct_names: std::collections::HashSet<&str> =
+            direct_pkgs.iter().map(|p| p.name.as_str()).collect();
+
+        // Use lockfile version for direct packages when available.
+        let direct: Vec<(String, Option<String>)> = direct_pkgs
+            .iter()
+            .map(|p| {
+                let ver = lf_pkgs
+                    .iter()
+                    .find(|lp| lp.name == p.name)
+                    .map(|lp| lp.version.clone())
+                    .or_else(|| p.version.clone());
+                (p.name.clone(), ver)
+            })
+            .collect();
+
+        let transitive: Vec<(String, Option<String>)> = lf_pkgs
+            .iter()
+            .filter(|p| !direct_names.contains(p.name.as_str()))
+            .map(|p| (p.name.clone(), Some(p.version.clone())))
+            .collect();
+
+        direct_count = direct.len();
+        transitive_count = transitive.len();
+        scan_list = direct.into_iter().chain(transitive).collect();
+    } else {
+        direct_count = direct_pkgs.len();
+        transitive_count = 0;
+        scan_list = direct_pkgs.into_iter().map(|p| (p.name, p.version)).collect();
+    }
+
+    if scan_list.is_empty() {
+        return;
+    }
+
+    if transitive_count > 0 {
+        eprintln!(
+            "  primer: scanning {} — {} direct + {} transitive packages",
+            manifest_name, direct_count, transitive_count
+        );
+    } else {
+        eprintln!(
+            "  primer: scanning {} ({} packages)",
+            manifest_name, direct_count
+        );
+    }
 
     let force = crate::prompt::force_flag();
 
-    for pkg in &packages {
-        if crate::allowlist::is_allowed(&pkg.name, pm.ecosystem()) {
+    for (name, version) in &scan_list {
+        if crate::allowlist::is_allowed(name, pm.ecosystem()) {
             continue;
         }
-        match osv::query(&pkg.name, pm.ecosystem(), pkg.version.as_deref(), false).await {
+        match osv::query(name, pm.ecosystem(), version.as_deref(), false).await {
             Ok(vulns) if !vulns.is_empty() => {
-                match crate::prompt::evaluate(&pkg.name, pm.ecosystem(), &vulns, force) {
+                match crate::prompt::evaluate(name, pm.ecosystem(), &vulns, force) {
                     crate::prompt::Decision::Abort => std::process::exit(1),
                     crate::prompt::Decision::Proceed => {}
                 }
             }
-            Ok(_) => {
-                eprintln!("  {} {}: no vulnerabilities found.", "✓".green(), pkg.name);
-            }
+            Ok(_) => {}
             Err(e) => eprintln!("⚠  primer: scan skipped ({}) — proceeding", e),
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Transitive dependency scan (post-install lockfile diff)
+// ---------------------------------------------------------------------------
+
+/// The lockfile that this PM writes on install (used for post-install diffing).
+pub fn canonical_lockfile(pm: &PackageManager) -> Option<&'static str> {
+    match pm {
+        PackageManager::Npm => Some("package-lock.json"),
+        PackageManager::Yarn => Some("yarn.lock"),
+        PackageManager::Pnpm => Some("pnpm-lock.yaml"),
+        PackageManager::Uv => Some("uv.lock"),
+        PackageManager::Poetry => Some("poetry.lock"),
+        PackageManager::Go => Some("go.sum"),
+        PackageManager::Cargo => Some("Cargo.lock"),
+        PackageManager::Pip => None, // pip does not write a lockfile
+    }
+}
+
+/// Read the canonical lockfile for this PM from the current directory.
+/// Returns `None` if the file does not exist or cannot be read.
+fn lockfile_snapshot(pm: &PackageManager) -> Option<(String, String)> {
+    let name = canonical_lockfile(pm)?;
+    let content = std::fs::read_to_string(name).ok()?;
+    Some((name.to_owned(), content))
+}
+
+/// Compare the current lockfile to `before_snapshot`, scan any packages that
+/// were added by the install, and report findings.  Exits 1 if any finding
+/// is blocked — install already happened, but the signal is still useful for CI.
+async fn scan_transitive_diff(pm: &PackageManager, before: Option<(String, String)>) {
+    let lf_name = match canonical_lockfile(pm) {
+        Some(n) => n,
+        None => return,
+    };
+
+    let new_content = match std::fs::read_to_string(lf_name) {
+        Ok(c) => c,
+        Err(_) => return,
+    };
+
+    let new_pkgs = crate::lockfile::parse_lockfile(lf_name, &new_content);
+    if new_pkgs.is_empty() {
+        return;
+    }
+
+    // Packages present in the new lockfile but absent (or at a different
+    // version) in the pre-install snapshot are the newly added transitives.
+    let added: Vec<_> = if let Some((_, old_content)) = before {
+        let old_keys: std::collections::HashSet<String> = crate::lockfile::parse_lockfile(lf_name, &old_content)
+            .into_iter()
+            .map(|p| format!("{}@{}", p.name, p.version))
+            .collect();
+        new_pkgs
+            .into_iter()
+            .filter(|p| !old_keys.contains(&format!("{}@{}", p.name, p.version)))
+            .collect()
+    } else {
+        // No prior lockfile — every entry is newly added
+        new_pkgs
+    };
+
+    if added.is_empty() {
+        return;
+    }
+
+    eprintln!(
+        "  primer: scanning {} new transitive packages …",
+        added.len()
+    );
+
+    let mut any_blocked = false;
+
+    for pkg in &added {
+        if crate::allowlist::is_allowed(&pkg.name, pm.ecosystem()) {
+            continue;
+        }
+        match osv::query(&pkg.name, pm.ecosystem(), Some(&pkg.version), false).await {
+            Ok(vulns) if !vulns.is_empty() => {
+                if crate::prompt::report_post_install(&pkg.name, pm.ecosystem(), &vulns) {
+                    any_blocked = true;
+                }
+            }
+            Ok(_) => {}
+            Err(e) => eprintln!("⚠  primer: scan skipped ({}) — proceeding", e),
+        }
+    }
+
+    if any_blocked {
+        std::process::exit(1);
     }
 }
 
@@ -353,15 +531,16 @@ pub async fn run(pm: PackageManager, args: Vec<String>) -> Result<()> {
     let real_bin = find_real_binary(pm.name())
         .ok_or_else(|| anyhow::anyhow!("Could not find real '{}' binary in PATH", pm.name()))?;
 
+    let cfg = crate::config::load().unwrap_or_default();
+
     if let Some(packages) = extract_packages(&pm, &args) {
         let force = crate::prompt::force_flag();
 
+        // Pre-install: scan explicitly named packages.
         for pkg in &packages {
-            // Skip allow-listed packages silently.
             if crate::allowlist::is_allowed(&pkg.name, pm.ecosystem()) {
                 continue;
             }
-
             match osv::query(&pkg.name, pm.ecosystem(), pkg.version.as_deref(), false).await {
                 Ok(vulns) if !vulns.is_empty() => {
                     match crate::prompt::evaluate(&pkg.name, pm.ecosystem(), &vulns, force) {
@@ -375,13 +554,23 @@ pub async fn run(pm: PackageManager, args: Vec<String>) -> Result<()> {
                 Err(e) => eprintln!("⚠  primer: scan skipped ({}) — proceeding", e),
             }
         }
-    } else if crate::config::load().unwrap_or_default().intercept_restore {
+
+        // Transitive scan: snapshot lockfile → run PM → diff → scan new entries.
+        if !cfg.direct_only {
+            let snapshot = lockfile_snapshot(&pm);
+            let exit_code = run_child_exit_code(&real_bin, &args)?;
+            if exit_code == 0 {
+                scan_transitive_diff(&pm, snapshot).await;
+            }
+            std::process::exit(exit_code);
+        }
+    } else if cfg.intercept_restore {
         if let Some(manifest) = is_bare_restore(&pm, &args) {
-            intercept_manifest(&pm, manifest).await;
+            intercept_manifest(&pm, manifest, cfg.direct_only).await;
         }
     }
 
-    // Hand off to the real binary — this replaces the current process on Unix.
+    // Fast path: exec replaces the current process (no wrapper overhead).
     bail!(exec_real_binary(&real_bin, &args))
 }
 
@@ -671,5 +860,101 @@ mod tests {
     #[test]
     fn cargo_add_not_bare_restore() {
         assert!(is_bare_restore(&PackageManager::Cargo, &args("add serde")).is_none());
+    }
+
+    // --- lockfile_candidates ---
+
+    #[test]
+    fn lockfile_candidates_for_package_json() {
+        let c = lockfile_candidates("package.json");
+        assert!(c.contains(&"package-lock.json"));
+        assert!(c.contains(&"yarn.lock"));
+        assert!(c.contains(&"pnpm-lock.yaml"));
+    }
+
+    #[test]
+    fn lockfile_candidates_for_requirements_txt() {
+        let c = lockfile_candidates("requirements.txt");
+        assert!(c.contains(&"uv.lock"));
+        assert!(c.contains(&"poetry.lock"));
+    }
+
+    #[test]
+    fn lockfile_candidates_for_pyproject_toml() {
+        let c = lockfile_candidates("pyproject.toml");
+        assert!(c.contains(&"uv.lock"));
+        assert!(c.contains(&"poetry.lock"));
+    }
+
+    #[test]
+    fn lockfile_candidates_for_go_mod() {
+        assert_eq!(lockfile_candidates("go.mod"), &["go.sum"]);
+    }
+
+    #[test]
+    fn lockfile_candidates_for_cargo_toml() {
+        assert_eq!(lockfile_candidates("Cargo.toml"), &["Cargo.lock"]);
+    }
+
+    #[test]
+    fn lockfile_candidates_unknown_returns_empty() {
+        assert!(lockfile_candidates("unknown.txt").is_empty());
+    }
+
+    // --- canonical_lockfile ---
+
+    #[test]
+    fn canonical_lockfile_npm_is_package_lock() {
+        assert_eq!(
+            canonical_lockfile(&PackageManager::Npm),
+            Some("package-lock.json")
+        );
+    }
+
+    #[test]
+    fn canonical_lockfile_yarn_is_yarn_lock() {
+        assert_eq!(
+            canonical_lockfile(&PackageManager::Yarn),
+            Some("yarn.lock")
+        );
+    }
+
+    #[test]
+    fn canonical_lockfile_pnpm_is_pnpm_lock() {
+        assert_eq!(
+            canonical_lockfile(&PackageManager::Pnpm),
+            Some("pnpm-lock.yaml")
+        );
+    }
+
+    #[test]
+    fn canonical_lockfile_uv_is_uv_lock() {
+        assert_eq!(canonical_lockfile(&PackageManager::Uv), Some("uv.lock"));
+    }
+
+    #[test]
+    fn canonical_lockfile_poetry_is_poetry_lock() {
+        assert_eq!(
+            canonical_lockfile(&PackageManager::Poetry),
+            Some("poetry.lock")
+        );
+    }
+
+    #[test]
+    fn canonical_lockfile_go_is_go_sum() {
+        assert_eq!(canonical_lockfile(&PackageManager::Go), Some("go.sum"));
+    }
+
+    #[test]
+    fn canonical_lockfile_cargo_is_cargo_lock() {
+        assert_eq!(
+            canonical_lockfile(&PackageManager::Cargo),
+            Some("Cargo.lock")
+        );
+    }
+
+    #[test]
+    fn canonical_lockfile_pip_is_none() {
+        assert!(canonical_lockfile(&PackageManager::Pip).is_none());
     }
 }

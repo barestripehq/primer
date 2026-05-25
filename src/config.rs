@@ -28,6 +28,10 @@ pub struct Config {
     /// are intercepted and scanned before the real binary runs.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub intercept_restore: bool,
+    /// When true, transitive dependency scanning is disabled — only directly
+    /// declared packages are scanned (overrides the default transitive-on behaviour).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub direct_only: bool,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq)]
@@ -81,6 +85,7 @@ const VALID_KEYS: &[&str] = &[
     "ai.model",
     "ai.tokenizer",
     "intercept-restore",
+    "direct-only",
 ];
 
 pub fn get(key: &str) -> Result<Option<String>> {
@@ -94,6 +99,7 @@ pub(crate) fn get_from(path: &Path, key: &str) -> Result<Option<String>> {
         "ai.model" => cfg.ai.model.map(|p| p.to_string_lossy().into_owned()),
         "ai.tokenizer" => cfg.ai.tokenizer.map(|p| p.to_string_lossy().into_owned()),
         "intercept-restore" => Some(cfg.intercept_restore.to_string()),
+        "direct-only" => Some(cfg.direct_only.to_string()),
         _ => bail!(
             "unknown config key '{}'. Valid keys: {}",
             key,
@@ -122,6 +128,11 @@ pub(crate) fn set_to(path: &Path, key: &str, value: &str) -> Result<()> {
             "true" | "1" | "yes" => cfg.intercept_restore = true,
             "false" | "0" | "no" => cfg.intercept_restore = false,
             _ => bail!("intercept-restore must be 'true' or 'false'"),
+        },
+        "direct-only" => match value {
+            "true" | "1" | "yes" => cfg.direct_only = true,
+            "false" | "0" | "no" => cfg.direct_only = false,
+            _ => bail!("direct-only must be 'true' or 'false'"),
         },
         _ => bail!(
             "unknown config key '{}'. Valid keys: {}",
@@ -159,6 +170,7 @@ pub fn list() -> Result<()> {
             .unwrap_or_else(|| "(not set)".into())
     );
     println!("  intercept-restore = {}", cfg.intercept_restore);
+    println!("  direct-only       = {}", cfg.direct_only);
     Ok(())
 }
 
@@ -322,5 +334,51 @@ mod tests {
         set_to(&path, "intercept-restore", "true").unwrap();
         let contents = std::fs::read_to_string(&path).unwrap();
         assert!(contents.contains("intercept_restore = true"));
+    }
+
+    // --- direct-only ---
+
+    #[test]
+    fn direct_only_defaults_to_false() {
+        let cfg = Config::default();
+        assert!(!cfg.direct_only);
+    }
+
+    #[test]
+    fn set_direct_only_true_roundtrips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        set_to(&path, "direct-only", "true").unwrap();
+        let v = get_from(&path, "direct-only").unwrap();
+        assert_eq!(v.as_deref(), Some("true"));
+    }
+
+    #[test]
+    fn set_direct_only_false_roundtrips() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        set_to(&path, "direct-only", "true").unwrap();
+        set_to(&path, "direct-only", "false").unwrap();
+        let cfg = load_from(&path).unwrap();
+        assert!(!cfg.direct_only);
+    }
+
+    #[test]
+    fn direct_only_not_written_when_false() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        let cfg = Config::default();
+        save_to(&path, &cfg).unwrap();
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert!(!contents.contains("direct_only"));
+    }
+
+    #[test]
+    fn direct_only_written_when_true() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("config.toml");
+        set_to(&path, "direct-only", "true").unwrap();
+        let contents = std::fs::read_to_string(&path).unwrap();
+        assert!(contents.contains("direct_only = true"));
     }
 }

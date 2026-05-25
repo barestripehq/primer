@@ -250,6 +250,59 @@ fn interactive_decision(
 }
 
 // ---------------------------------------------------------------------------
+// Post-install report (no prompt — package already installed)
+// ---------------------------------------------------------------------------
+
+fn pm_remove_hint(ecosystem: &str) -> &'static str {
+    match ecosystem {
+        "PyPI" => "pip uninstall",
+        "npm" => "npm uninstall",
+        "Go" => "go mod edit -droprequire",
+        "crates.io" => "cargo remove",
+        _ => "uninstall",
+    }
+}
+
+/// Report vulnerabilities found in a post-install transitive package without
+/// prompting (since the package is already installed).  Returns `true` if
+/// blocking (CRITICAL/HIGH) findings were detected.
+pub fn report_post_install(package: &str, ecosystem: &str, vulns: &[Vulnerability]) -> bool {
+    if vulns.is_empty() {
+        return false;
+    }
+
+    let blocking: Vec<&Vulnerability> = vulns
+        .iter()
+        .filter(|v| is_blocking(v.severity_label()))
+        .collect();
+
+    print_findings(package, vulns);
+
+    if !blocking.is_empty() {
+        eprintln!(
+            "  {} {} is installed but has {} CRITICAL/HIGH {}.",
+            "⚠".yellow(),
+            package.bold(),
+            blocking.len(),
+            if blocking.len() == 1 {
+                "vulnerability"
+            } else {
+                "vulnerabilities"
+            },
+        );
+        eprintln!(
+            "  Consider: {} {}",
+            pm_remove_hint(ecosystem),
+            package
+        );
+        eprintln!();
+        return true;
+    }
+
+    false
+}
+
+// ---------------------------------------------------------------------------
 // Shared display
 // ---------------------------------------------------------------------------
 

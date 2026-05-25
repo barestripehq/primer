@@ -374,6 +374,7 @@ mod tests {
                 tokenizer: None,
             },
             intercept_restore: false,
+            direct_only: false,
         }
     }
 

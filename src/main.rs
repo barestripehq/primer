@@ -3,6 +3,7 @@ mod cache;
 mod cli;
 mod config;
 mod engine;
+mod lockfile;
 mod manifest;
 mod prompt;
 mod report;
@@ -62,6 +63,9 @@ enum Commands {
         /// Generate an AI summary of findings using the local model
         #[arg(long)]
         ai: bool,
+        /// Scan only directly declared packages; skip lockfile transitive deps
+        #[arg(long)]
+        direct_only: bool,
     },
     /// Generate shims and update PATH
     Init,
@@ -243,16 +247,25 @@ async fn main() -> Result<()> {
             force,
             verbose,
             ai,
+            direct_only,
         } => {
+            // --direct-only flag OR global config key both disable transitive scanning
+            let direct_only =
+                direct_only || crate::config::load().unwrap_or_default().direct_only;
+
             if let Some(path) = file {
-                // --- manifest file scan ---
+                // --- file scan (manifest or lockfile) ---
                 let filename = path
                     .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or_default();
+                // Treat lockfiles as manifests when direct-only is set
+                let is_lockfile =
+                    !direct_only && lockfile::LOCKFILE_NAMES.contains(&filename);
                 let eco = ecosystem
                     .as_ref()
                     .map(|e| e.as_osv_str())
+                    .or_else(|| lockfile::ecosystem_from_lockfile(filename))
                     .or_else(|| manifest::ecosystem_from_filename(filename))
                     .unwrap_or_else(|| {
                         eprintln!(
@@ -265,31 +278,46 @@ async fn main() -> Result<()> {
                     eprintln!("⚠ Could not read {}: {}", path.display(), e);
                     std::process::exit(1);
                 });
-                let packages = manifest::parse_file(filename, &content);
+
+                // Resolve to a flat (name, version) list from whichever format matched.
+                let packages: Vec<(String, Option<String>)> = if is_lockfile {
+                    lockfile::parse_lockfile(filename, &content)
+                        .into_iter()
+                        .map(|p| (p.name, Some(p.version)))
+                        .collect()
+                } else {
+                    manifest::parse_file(filename, &content)
+                        .into_iter()
+                        .map(|p| (p.name, p.version))
+                        .collect()
+                };
+
                 if packages.is_empty() {
                     println!("No packages found in {}.", path.display());
                 } else {
+                    let kind = if is_lockfile { "lockfile" } else { "manifest" };
                     println!(
-                        "Scanning {} ({}) — {} packages …",
+                        "Scanning {} ({}) — {} packages [{}] …",
                         filename,
                         eco,
-                        packages.len()
+                        packages.len(),
+                        kind,
                     );
                     let mut any_blocked = false;
-                    for pkg in &packages {
-                        match osv::query(&pkg.name, eco, pkg.version.as_deref(), verbose).await {
+                    for (name, version) in &packages {
+                        match osv::query(name, eco, version.as_deref(), verbose).await {
                             Ok(vulns) if vulns.is_empty() => {}
                             Ok(vulns) => {
                                 if ai {
                                     show_ai_summary(&vulns);
                                 }
                                 if let prompt::Decision::Abort =
-                                    prompt::evaluate(&pkg.name, eco, &vulns, force)
+                                    prompt::evaluate(name, eco, &vulns, force)
                                 {
                                     any_blocked = true;
                                 }
                             }
-                            Err(e) => eprintln!("  ⚠ {} scan skipped: {}", pkg.name, e),
+                            Err(e) => eprintln!("  ⚠ {} scan skipped: {}", name, e),
                         }
                     }
                     if any_blocked {
