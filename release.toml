@@ -1,0 +1,12 @@
+# cargo-release configuration
+# Run: cargo release patch | minor | major
+# This bumps Cargo.toml, commits, tags, and pushes.
+# cargo-dist picks up the tag and builds the release binaries.
+
+publish = false          # crates.io publish handled separately if needed
+tag = true               # create annotated git tag
+push = true              # push commit + tag to origin
+sign-tag = false         # set to true if you have GPG signing configured
+
+pre-release-commit-message = "chore: release {{version}}"
+tag-message = "Release {{version}}"
