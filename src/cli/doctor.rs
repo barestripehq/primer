@@ -145,7 +145,7 @@ fn check_model(_ms_bin: &Path) {
             size as f64 / (1024.0 * 1024.0)
         );
     } else {
-        println!("  ✗ model     not found — run `primer update-models`");
+        println!("  ✗ model     not found — run `primer model add`");
         println!("             expected: {}", model_path.display());
     }
 
@@ -160,7 +160,7 @@ fn check_model(_ms_bin: &Path) {
             size as f64 / 1024.0
         );
     } else {
-        println!("  ✗ tokenizer not found — run `primer update-models`");
+        println!("  ✗ tokenizer not found — run `primer model add`");
     }
 
     #[cfg(not(feature = "ai"))]

@@ -46,6 +46,59 @@ pub(crate) fn get_stale_from_dir(
     Some(entry.vulns)
 }
 
+/// Print entry count, total size on disk, and oldest/newest entry timestamps.
+pub fn stats() -> Result<()> {
+    stats_for_dir(&cache_dir())
+}
+
+pub(crate) fn stats_for_dir(dir: &Path) -> Result<()> {
+    if !dir.exists() {
+        println!("Cache: {} (empty)", dir.display());
+        return Ok(());
+    }
+
+    let mut count: usize = 0;
+    let mut total_bytes: u64 = 0;
+    let mut oldest: Option<u64> = None;
+    let mut newest: Option<u64> = None;
+
+    for entry in std::fs::read_dir(dir)? {
+        let path = entry?.path();
+        if !path.extension().is_some_and(|e| e == "json") {
+            continue;
+        }
+        let meta = std::fs::metadata(&path)?;
+        total_bytes += meta.len();
+        count += 1;
+
+        if let Ok(contents) = std::fs::read_to_string(&path) {
+            if let Ok(ce) = serde_json::from_str::<CacheEntry>(&contents) {
+                oldest = Some(oldest.map_or(ce.fetched_at, |o: u64| o.min(ce.fetched_at)));
+                newest = Some(newest.map_or(ce.fetched_at, |n: u64| n.max(ce.fetched_at)));
+            }
+        }
+    }
+
+    println!("Cache: {}\n", dir.display());
+    println!("  Entries : {}", count);
+    println!("  Size    : {:.1} KB", total_bytes as f64 / 1024.0);
+    if let (Some(o), Some(n)) = (oldest, newest) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let age_secs = now.saturating_sub(o);
+        let age_h = age_secs / 3600;
+        let age_m = (age_secs % 3600) / 60;
+        let fresh_secs = now.saturating_sub(n);
+        let fresh_h = fresh_secs / 3600;
+        let fresh_m = (fresh_secs % 3600) / 60;
+        println!("  Oldest  : {}h {}m ago", age_h, age_m);
+        println!("  Newest  : {}h {}m ago", fresh_h, fresh_m);
+    }
+    Ok(())
+}
+
 /// Remove all cached entries. Returns the number of files deleted.
 pub fn clear() -> Result<usize> {
     let dir = cache_dir();
@@ -181,6 +234,40 @@ mod tests {
         }
         assert_eq!(count, 2);
         assert!(std::fs::read_dir(dir.path()).unwrap().next().is_none());
+    }
+
+    // --- stats_for_dir ---
+
+    #[test]
+    fn stats_empty_dir_does_not_error() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(stats_for_dir(dir.path()).is_ok());
+    }
+
+    #[test]
+    fn stats_counts_entries_correctly() {
+        let dir = tempfile::tempdir().unwrap();
+        put_to_dir(dir.path(), "pkg-a", "PyPI", None, &[vuln("GHSA-0001")], 1000).unwrap();
+        put_to_dir(dir.path(), "pkg-b", "npm",  None, &[vuln("GHSA-0002")], 2000).unwrap();
+        // stats_for_dir prints output; we just verify it doesn't error and the dir has 2 files
+        assert!(stats_for_dir(dir.path()).is_ok());
+        let count = std::fs::read_dir(dir.path())
+            .unwrap()
+            .filter(|e| {
+                e.as_ref()
+                    .ok()
+                    .and_then(|e| e.path().extension().map(|x| x == "json"))
+                    .unwrap_or(false)
+            })
+            .count();
+        assert_eq!(count, 2);
+    }
+
+    #[test]
+    fn stats_nonexistent_dir_does_not_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("no-such-dir");
+        assert!(stats_for_dir(&missing).is_ok());
     }
 
     #[test]

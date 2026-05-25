@@ -73,6 +73,10 @@ pub fn generate(vulns: &[Vulnerability]) -> Option<Summary> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "ai")]
+    use super::*;
+    #[cfg(feature = "ai")]
+    use crate::engine::osv::Vulnerability;
 
     #[test]
     #[cfg(feature = "ai")]
