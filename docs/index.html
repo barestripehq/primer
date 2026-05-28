@@ -286,6 +286,40 @@
       border-top: 1px solid #e5e7eb;
       margin: 0 24px;
     }
+
+    /* ── Mobile ── */
+    @media (max-width: 640px) {
+      .hero { padding: 48px 16px 36px; }
+
+      .hero h1 { font-size: 2rem; }
+
+      .hero p { font-size: 1rem; margin-bottom: 28px; }
+
+      /* Full-width scrollable install box — never wrap a command mid-URL */
+      .install-box {
+        display: flex;
+        width: 100%;
+        font-size: 0.78rem;
+        padding: 12px 14px;
+      }
+
+      #install-cmd { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+
+      section { padding: 40px 16px; }
+
+      h2 { font-size: 1.3rem; }
+
+      .flow, .code-block, .step-block {
+        font-size: 0.78rem;
+        padding: 16px;
+      }
+
+      /* Tables scroll horizontally rather than breaking layout */
+      table { display: block; overflow-x: auto; }
+
+      /* Cards already use auto-fit but enforce single column below 480px */
+      .cards { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
