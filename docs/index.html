@@ -5,7 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>primer — Pre-install security interceptor for package managers</title>
   <meta name="description" content="primer scans packages against the OSV vulnerability database before they hit your system.">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%23111827'/><text x='16' y='23' font-family='system-ui,sans-serif' font-size='22' font-weight='700' text-anchor='middle' fill='%2334d399'>p</text></svg>">
+  <link rel="icon" href="/favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="/primer-favicon.svg">
+  <link rel="apple-touch-icon" href="/favicon-180.png">
   <link rel="canonical" href="https://primer.barestripe.com">
 
   <!-- Open Graph -->
@@ -37,14 +39,10 @@
       text-align: center;
     }
 
-    .hero h1 {
-      font-size: 3rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
+    .hero-logo {
+      height: 56px;
       margin-bottom: 16px;
     }
-
-    .hero h1 span { color: #34d399; }
 
     .hero p {
       font-size: 1.2rem;
@@ -326,7 +324,7 @@
 
   <!-- Hero -->
   <header class="hero">
-    <h1><span>primer</span></h1>
+    <img src="/primer-logo.svg" alt="primer" class="hero-logo">
     <p>Pre-install security interceptor for package managers. Scans every package against the OSV vulnerability database before it hits your system.</p>
 
     <div class="install-box">

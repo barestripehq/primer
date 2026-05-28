@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<title>primer favicon</title>
+<g transform="translate(32,33) scale(1.62) translate(-32,-31)">
+<path d="M16,12 L48,12 Q52,12 52,16 L52,30 Q52,45 32,57 Q12,45 12,30 L12,16 Q12,12 16,12 Z" fill="#35E0A1"/>
+<path d="M32,21 L32,35" fill="none" stroke="#08362A" stroke-width="4.6" stroke-linecap="round"/>
+<path d="M25,29 L32,36 L39,29" fill="none" stroke="#08362A" stroke-width="4.6" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M24,42 L40,42" fill="none" stroke="#08362A" stroke-width="4.6" stroke-linecap="round"/>
+</g>
+</svg>
