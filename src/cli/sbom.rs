@@ -226,7 +226,7 @@ fn emit_spdx(
         "dataLicense": "CC0-1.0",
         "SPDXID": "SPDXRef-DOCUMENT",
         "name": "primer-sbom",
-        "documentNamespace": format!("https://primer-scan.netlify.app/sbom/{}", uuid_v4()),
+        "documentNamespace": format!("https://primer.barestripe.com/sbom/{}", uuid_v4()),
         "creationInfo": {
             "created": chrono_now(),
             "creators": [format!("Tool: primer-{}", env!("CARGO_PKG_VERSION"))],

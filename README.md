@@ -33,7 +33,7 @@ pip install pillow
 ## Installation
 
 ```sh
-curl --proto '=https' --tlsv1.2 -fsSL https://github.com/callezenwaka/primer/releases/latest/download/primer-installer.sh | sh
+curl --proto '=https' --tlsv1.2 -fsSL https://github.com/barestripehq/primer/releases/latest/download/primer-installer.sh | sh
 ```
 
 Then run once to set up shims:
@@ -47,7 +47,7 @@ This creates shims in `~/.primer/bin` and prepends it to your shell config (`.zs
 **From source:**
 
 ```sh
-cargo install --git https://github.com/callezenwaka/primer
+cargo install --git https://github.com/barestripehq/primer
 primer init
 ```
 

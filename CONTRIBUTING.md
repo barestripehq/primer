@@ -5,7 +5,7 @@
 **Prerequisites:** Rust toolchain via [rustup](https://rustup.rs).
 
 ```sh
-git clone https://github.com/callezenwaka/primer
+git clone https://github.com/barestripehq/primer
 cd primer
 cargo build                      # default build, no AI
 cargo build --features ai        # build with AI summary layer
