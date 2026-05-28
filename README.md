@@ -23,12 +23,12 @@ pip install pillow
 
 ## Supported ecosystems
 
-| Ecosystem | Intercepted commands |
-|-----------|---------------------|
-| Python    | `pip`, `uv`, `poetry` |
-| Node.js   | `npm`, `yarn`, `pnpm` |
-| Go        | `go get`, `go mod` |
-| Rust      | `cargo add` |
+| Ecosystem | Intercepted commands | Manifest / Lockfile |
+|-----------|---------------------|---------------------|
+| Python    | `pip`, `uv`, `poetry` | `requirements.txt`, `pyproject.toml`, `uv.lock`, `poetry.lock` |
+| Node.js   | `npm`, `yarn`, `pnpm` | `package.json`, `package-lock.json`, `yarn.lock`, `pnpm-lock.yaml` |
+| Go        | `go get`, `go mod` | `go.mod`, `go.sum` |
+| Rust      | `cargo add`, `cargo build`, `cargo fetch`, `cargo check` | `Cargo.toml`, `Cargo.lock` |
 
 ## Installation
 

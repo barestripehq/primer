@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>primer — Pre-install security interceptor for package managers</title>
   <meta name="description" content="primer scans packages against the OSV vulnerability database before they hit your system.">
-  <link rel="icon" href="/favicon.ico" sizes="any">
-  <link rel="icon" type="image/svg+xml" href="/primer-favicon.svg">
-  <link rel="apple-touch-icon" href="/favicon-180.png">
+  <link rel="icon" href="./favicon.ico" sizes="any">
+  <link rel="icon" type="image/svg+xml" href="./primer-favicon.svg">
+  <link rel="apple-touch-icon" href="./favicon-180.png">
   <link rel="canonical" href="https://primer.barestripe.com">
 
   <!-- Open Graph -->
@@ -324,7 +324,7 @@
 
   <!-- Hero -->
   <header class="hero">
-    <img src="/primer-logo.svg" alt="primer" class="hero-logo">
+    <img src="./primer-logo.svg" alt="primer" class="hero-logo">
     <p>Pre-install security interceptor for package managers. Scans every package against the OSV vulnerability database before it hits your system.</p>
 
     <div class="install-box">
@@ -341,6 +341,44 @@
       <a href="https://github.com/barestripehq/primer/releases" class="btn btn-outline">Releases</a>
     </div>
   </header>
+
+  <!-- Ecosystems -->
+  <section>
+    <h2>Supported ecosystems</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Ecosystem</th>
+          <th>Intercepted commands</th>
+          <th>Manifest / Lockfile</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Python</td>
+          <td><code>pip</code>, <code>uv</code>, <code>poetry</code></td>
+          <td><code>requirements.txt</code>, <code>pyproject.toml</code>, <code>uv.lock</code>, <code>poetry.lock</code></td>
+        </tr>
+        <tr>
+          <td>Node.js</td>
+          <td><code>npm</code>, <code>yarn</code>, <code>pnpm</code></td>
+          <td><code>package.json</code>, <code>package-lock.json</code>, <code>yarn.lock</code>, <code>pnpm-lock.yaml</code></td>
+        </tr>
+        <tr>
+          <td>Go</td>
+          <td><code>go get</code>, <code>go mod</code></td>
+          <td><code>go.mod</code>, <code>go.sum</code></td>
+        </tr>
+        <tr>
+          <td>Rust</td>
+          <td><code>cargo add</code>, <code>cargo build</code>, <code>cargo fetch</code>, <code>cargo check</code></td>
+          <td><code>Cargo.toml</code>, <code>Cargo.lock</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <hr class="divider">
 
   <!-- How it works -->
   <section>
@@ -677,39 +715,6 @@ primer scan pillow --ecosystem pypi --ai</div>
         <tr>
           <td><code>primer uninit [--purge]</code></td>
           <td>Remove shims and <code>$PATH</code> entry. <code>--purge</code> also deletes cache and model files</td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
-
-  <hr class="divider">
-
-  <!-- Ecosystems -->
-  <section>
-    <h2>Supported ecosystems</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Ecosystem</th>
-          <th>Intercepted commands</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td>Python</td>
-          <td><code>pip</code>, <code>uv</code>, <code>poetry</code></td>
-        </tr>
-        <tr>
-          <td>Node.js</td>
-          <td><code>npm</code>, <code>yarn</code>, <code>pnpm</code></td>
-        </tr>
-        <tr>
-          <td>Go</td>
-          <td><code>go get</code>, <code>go mod</code></td>
-        </tr>
-        <tr>
-          <td>Rust</td>
-          <td><code>cargo add</code>, <code>cargo build</code>, <code>cargo fetch</code>, <code>cargo check</code></td>
         </tr>
       </tbody>
     </table>
